@@ -1,25 +1,36 @@
 {
   "compilerOptions": {
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
-    "resolvePackageJsonExports": true,
-    "esModuleInterop": true,
-    "isolatedModules": true,
-    "declaration": true,
-    "removeComments": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "allowSyntheticDefaultImports": true,
-    "target": "ES2023",
-    "sourceMap": true,
+    /* File Layout */
+    "rootDir": "./src",
     "outDir": "./dist",
-    "baseUrl": "./",
-    "incremental": true,
+
+    /* Environment Settings */
+    "module": "commonjs",              
+    "target": "es2020",                 
+    "lib": ["es2020"],                  
+    "types": ["node"],                  
+
+    /* Other Outputs */
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+
+    /* Strict Type Checking */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+
+    /* Decorator Support (for TypeORM) */
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+
+    /* Module Resolution */
+    "moduleResolution": "node",
+
+    /* Performance / Compatibility */
     "skipLibCheck": true,
-    "strictNullChecks": true,
-    "forceConsistentCasingInFileNames": true,
-    "noImplicitAny": false,
-    "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false
-  }
+    "esModuleInterop": true
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
 }
