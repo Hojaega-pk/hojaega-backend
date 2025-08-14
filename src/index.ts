@@ -2,6 +2,7 @@ import express = require('express');
 import { Request, Response, NextFunction } from 'express';
 import { serviceProviderRoutes } from './routes/serviceProviderRoutes';
 import { prismaService } from './services/prisma.service';
+import { setupSwagger } from './swagger';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -93,5 +94,6 @@ async function startServer() {
     process.exit(1);
   }
 }
+setupSwagger(app);
 
 startServer();
