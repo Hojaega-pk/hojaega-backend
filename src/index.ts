@@ -1,9 +1,7 @@
-import 'reflect-metadata';
 import express = require('express');
 import { Request, Response, NextFunction } from 'express';
-import { createConnection } from 'typeorm';
-import { ServiceProvider } from './entities/ServiceProvider';
 import { serviceProviderRoutes } from './routes/serviceProviderRoutes';
+import { prismaService } from './services/prisma.service';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -71,33 +69,29 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 // Database connection and server startup
-createConnection({
-  type: 'sqlite',
-  database: 'service_providers.db',
-  entities: [ServiceProvider],
-  synchronize: true, 
-  logging: true
-})
-.then(() => {
-  console.log('Database connected successfully');
-  
-  app.listen(Number(PORT), String(HOST), () => {
-    console.log('Service Provider API is running!');
-    console.log(`Server: http://${HOST}:${PORT}`);
-    console.log(`Domain: localhost:3000 (Development)`);
-    console.log(`Health check: http://localhost:3000/health`);
-    console.log(`API endpoints:`);
-    console.log(`   • Create: http://localhost:3000/api/sp-create`);
-    console.log(`   • List: http://localhost:3000/api/sp-list`);
-    console.log(`   • Get: http://localhost:3000/api/sp-get/{id}`);
-    console.log(`   • Update: http://localhost:3000/api/sp-update/{id}`);
-    console.log(`   • Delete: http://localhost:3000/api/sp-delete/{id}`);
-    console.log(`   • Filter: http://localhost:3000/api/sp-filter (POST)`);
-    console.log(`   • Stats: http://localhost:3000/api/sp-stats`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  });
-})
-.catch((error) => {
-  console.error('Database connection failed:', error);
-  process.exit(1);
-});
+async function startServer() {
+  try {
+    await prismaService.connect();
+    
+    app.listen(Number(PORT), String(HOST), () => {
+      console.log('Service Provider API is running!');
+      console.log(`Server: http://${HOST}:${PORT}`);
+      console.log(`Domain: localhost:3000 (Development)`);
+      console.log(`Health check: http://localhost:3000/health`);
+      console.log(`API endpoints:`);
+      console.log(`   • Create: http://localhost:3000/api/sp-create`);
+      console.log(`   • List: http://localhost:3000/api/sp-list`);
+      console.log(`   • Get: http://localhost:3000/api/sp-get/{id}`);
+      console.log(`   • Update: http://localhost:3000/api/sp-update/{id}`);
+      console.log(`   • Delete: http://localhost:3000/api/sp-delete/{id}`);
+      console.log(`   • Filter: http://localhost:3000/api/sp-filter (POST)`);
+      console.log(`   • Stats: http://localhost:3000/api/sp-stats`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+  } catch (error: any) {
+    console.error('Database connection failed:', error);
+    process.exit(1);
+  }
+}
+
+startServer();

@@ -1,37 +1,28 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+generator client {
+  provider = "prisma-client-js"
+}
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
+model ServiceProvider {
+  id          Int      @id @default(autoincrement())
+  name        String
+  city        String
+  skillset    String
+  contactNo   String
+  email       String?
+  description String?
+  experience  String?
+  hourlyRate  Float?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-model User {
-  id        Int       @id @default(autoincrement())
-  name      String
-  email     String    @unique
-  role      String    // "service_provider" or "admin" or"consumer"
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-}
-
-model Provider {
-  id                 Int      @id @default(autoincrement())
-  userId             Int      @unique
-  category           String
-  description        String
-  location           String
-  contactPhone       String
-  contactEmail       String
-  subscriptionStatus String   // "pending" | "active" | "expired"
-  subscriptionExpiry DateTime?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  @@map("service_providers")
 }
