@@ -1,7 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { getRepository } from 'typeorm';
-import { ServiceProvider } from '../entities/ServiceProvider';
 import { validateServiceProvider } from '../middleware/validation';
+import { prismaService } from '../services/prisma.service';
 
 
 interface ServiceProviderRequestBody {
@@ -41,10 +40,9 @@ const router = Router();
 
 router.get('/sp-list', async (req: Request, res: Response) => {
   try {
-    const serviceProviderRepository = getRepository(ServiceProvider);
-    const serviceProviders = await serviceProviderRepository.find({
+    const serviceProviders = await prismaService.getPrismaClient().serviceProvider.findMany({
       where: { isActive: true },
-      order: { createdAt: 'DESC' }
+      orderBy: { createdAt: 'desc' }
     });
     
     res.json({
@@ -74,9 +72,7 @@ router.get('/sp-get/:id', async (req: Request, res: Response) => {
       });
     }
 
-    const serviceProviderRepository = getRepository(ServiceProvider);
-    
-    const serviceProvider = await serviceProviderRepository.findOne({
+    const serviceProvider = await prismaService.getPrismaClient().serviceProvider.findFirst({
       where: { id: parseInt(id), isActive: true }
     });
     
@@ -105,56 +101,42 @@ router.get('/sp-get/:id', async (req: Request, res: Response) => {
 router.post('/sp-create', validateServiceProvider, async (req: TypedRequest, res: Response) => {
   try {
     const { name, city, skillset, contactNo, email, description, experience, hourlyRate } = req.body;
-    
-    
-    if (!name || !city || !skillset || !contactNo) {
+
+    // Check if service provider already exists
+    const existingProvider = await prismaService.getPrismaClient().serviceProvider.findFirst({
+      where: {
+        OR: [
+          { contactNo },
+          { email: email || undefined }
+        ]
+      }
+    });
+
+    if (existingProvider) {
       return res.status(400).json({
         success: false,
-        message: 'Name, city, skillset, and contact number are required'
+        message: 'Service provider with this contact number or email already exists'
       });
     }
-    
-   
-    const validatedName = name as string;
-    const validatedCity = city as string;
-    const validatedSkillset = skillset as string;
-    const validatedContactNo = contactNo as string;
-    
-    const serviceProviderRepository = getRepository(ServiceProvider);
-    
-    
-    const existingProvider = await serviceProviderRepository.findOne({
-      where: { contactNo: validatedContactNo, isActive: true }
+
+    const serviceProvider = await prismaService.getPrismaClient().serviceProvider.create({
+      data: {
+        name,
+        city,
+        skillset,
+        contactNo,
+        email,
+        description,
+        experience,
+        hourlyRate: hourlyRate ? parseFloat(hourlyRate.toString()) : null,
+        isActive: true
+      }
     });
-    
-    if (existingProvider) {
-      return res.status(409).json({
-        success: false,
-        message: 'A service provider with this contact number already exists'
-      });
-    }
-    
-   
-    const serviceProviderData = {
-      name: validatedName,
-      city: validatedCity,
-      skillset: validatedSkillset,
-      contactNo: validatedContactNo,
-      ...(email && { email }),
-      ...(description && { description }),
-      ...(experience && { experience }),
-      ...(hourlyRate && { hourlyRate: parseFloat(String(hourlyRate)) })
-    };
-    
-    
-    const newServiceProvider = serviceProviderRepository.create(serviceProviderData);
-    
-    const savedProvider = await serviceProviderRepository.save(newServiceProvider);
-    
+
     res.status(201).json({
       success: true,
-      message: 'Service provider created successfully',
-      data: savedProvider
+      data: serviceProvider,
+      message: 'Service provider created successfully'
     });
   } catch (error) {
     console.error('Error creating service provider:', error);
@@ -170,61 +152,63 @@ router.post('/sp-create', validateServiceProvider, async (req: TypedRequest, res
 router.put('/sp-update/:id', validateServiceProvider, async (req: TypedRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const { name, city, skillset, contactNo, email, description, experience, hourlyRate } = req.body;
+
     if (!id) {
       return res.status(400).json({
         success: false,
         message: 'ID parameter is required'
       });
     }
-    
-    const { name, city, skillset, contactNo, email, description, experience, hourlyRate } = req.body;
-    
-   
-    if (!name || !city || !skillset || !contactNo) {
-      return res.status(400).json({
-        success: false,
-        message: 'Name, city, skillset, and contact number are required'
-      });
-    }
-    
-   
-    const validatedName = name as string;
-    const validatedCity = city as string;
-    const validatedSkillset = skillset as string;
-    const validatedContactNo = contactNo as string;
-    
-    const serviceProviderRepository = getRepository(ServiceProvider);
-   
-    const existingProvider = await serviceProviderRepository.findOne({
+
+    // Check if service provider exists
+    const existingProvider = await prismaService.getPrismaClient().serviceProvider.findFirst({
       where: { id: parseInt(id), isActive: true }
     });
-    
+
     if (!existingProvider) {
       return res.status(404).json({
         success: false,
         message: 'Service provider not found'
       });
     }
-    
-  
-    const updateData: Partial<ServiceProvider> = {
-      name: validatedName,
-      city: validatedCity,
-      skillset: validatedSkillset,
-      contactNo: validatedContactNo,
-      ...(email && { email }),
-      ...(description && { description }),
-      ...(experience && { experience }),
-      ...(hourlyRate && { hourlyRate: parseFloat(String(hourlyRate)) })
-    };
-    
-    Object.assign(existingProvider, updateData);
-    const updatedProvider = await serviceProviderRepository.save(existingProvider);
-    
+
+    // Check for duplicate contact/email (excluding current provider)
+    const duplicateProvider = await prismaService.getPrismaClient().serviceProvider.findFirst({
+      where: {
+        OR: [
+          { contactNo },
+          { email: email || undefined }
+        ],
+        NOT: { id: parseInt(id) }
+      }
+    });
+
+    if (duplicateProvider) {
+      return res.status(400).json({
+        success: false,
+        message: 'Service provider with this contact number or email already exists'
+      });
+    }
+
+    const updatedProvider = await prismaService.getPrismaClient().serviceProvider.update({
+      where: { id: parseInt(id) },
+      data: {
+        name,
+        city,
+        skillset,
+        contactNo,
+        email,
+        description,
+        experience,
+        hourlyRate: hourlyRate ? parseFloat(hourlyRate.toString()) : null
+      }
+    });
+
     res.json({
       success: true,
-      message: 'Service provider updated successfully',
-      data: updatedProvider
+      data: updatedProvider,
+      message: 'Service provider updated successfully'
     });
   } catch (error) {
     console.error('Error updating service provider:', error);
@@ -240,6 +224,7 @@ router.put('/sp-update/:id', validateServiceProvider, async (req: TypedRequest, 
 router.delete('/sp-delete/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+
     if (!id) {
       return res.status(400).json({
         success: false,
@@ -247,23 +232,24 @@ router.delete('/sp-delete/:id', async (req: Request, res: Response) => {
       });
     }
     
-    const serviceProviderRepository = getRepository(ServiceProvider);
-    
-    const existingProvider = await serviceProviderRepository.findOne({
+    // Check if service provider exists
+    const existingProvider = await prismaService.getPrismaClient().serviceProvider.findFirst({
       where: { id: parseInt(id), isActive: true }
     });
-    
+
     if (!existingProvider) {
       return res.status(404).json({
         success: false,
         message: 'Service provider not found'
       });
     }
-    
-   
-    existingProvider.isActive = false;
-    await serviceProviderRepository.save(existingProvider);
-    
+
+    // Soft delete by setting isActive to false
+    await prismaService.getPrismaClient().serviceProvider.update({
+      where: { id: parseInt(id) },
+      data: { isActive: false }
+    });
+
     res.json({
       success: true,
       message: 'Service provider deleted successfully'
@@ -283,50 +269,30 @@ router.post('/sp-filter', async (req: FilterRequest, res: Response) => {
   try {
     const { city, skillset, experience, hourlyRateMin, hourlyRateMax, name, search } = req.body;
     
-    const serviceProviderRepository = getRepository(ServiceProvider);
-    const queryBuilder = serviceProviderRepository
-      .createQueryBuilder('provider')
-      .where('provider.isActive = :isActive', { isActive: true });
+    const serviceProviders = await prismaService.getPrismaClient().serviceProvider.findMany({
+      where: { isActive: true },
+      orderBy: { createdAt: 'desc' }
+    });
     
-    if (city && typeof city === 'string') {
-      queryBuilder.andWhere('LOWER(provider.city) = :city', { city: city.toLowerCase() });
-    }
-    
-    if (skillset && typeof skillset === 'string') {
-      queryBuilder.andWhere('provider.skillset LIKE :skillset', { skillset: `%${skillset}%` });
-    }
-    
-    if (experience && typeof experience === 'string') {
-      queryBuilder.andWhere('provider.experience = :experience', { experience });
-    }
+    const filteredProviders = serviceProviders.filter((provider: any) => {
+      const matchesCity = city ? provider.city.toLowerCase().includes(city.toLowerCase()) : true;
+      const matchesSkillset = skillset ? provider.skillset.toLowerCase().includes(skillset.toLowerCase()) : true;
+      const matchesExperience = experience ? provider.experience === experience : true;
+      const matchesHourlyRateMin = hourlyRateMin !== undefined ? provider.hourlyRate >= hourlyRateMin : true;
+      const matchesHourlyRateMax = hourlyRateMax !== undefined ? provider.hourlyRate <= hourlyRateMax : true;
+      const matchesName = name ? provider.name.toLowerCase().includes(name.toLowerCase()) : true;
+      const matchesSearch = search ? 
+        provider.name.toLowerCase().includes(search.toLowerCase()) || 
+        provider.city.toLowerCase().includes(search.toLowerCase()) || 
+        provider.skillset.toLowerCase().includes(search.toLowerCase()) : true;
 
-    if (hourlyRateMin !== undefined && hourlyRateMax !== undefined) {
-      queryBuilder.andWhere('provider.hourlyRate BETWEEN :min AND :max', {
-        min: hourlyRateMin,
-        max: hourlyRateMax
-      });
-    } else if (hourlyRateMin !== undefined) {
-      queryBuilder.andWhere('provider.hourlyRate >= :min', { min: hourlyRateMin });
-    } else if (hourlyRateMax !== undefined) {
-      queryBuilder.andWhere('provider.hourlyRate <= :max', { max: hourlyRateMax });
-    }
-
-    if (name && typeof name === 'string') {
-      queryBuilder.andWhere('provider.name LIKE :name', { name: `%${name}%` });
-    }
-
-    if (search && typeof search === 'string') {
-      queryBuilder.andWhere('(LOWER(provider.name) LIKE :search OR LOWER(provider.city) LIKE :search OR LOWER(provider.skillset) LIKE :search)', { search: `%${search.toLowerCase()}%` });
-    }
-    
-    const serviceProviders = await queryBuilder
-      .orderBy('provider.createdAt', 'DESC')
-      .getMany();
+      return matchesCity && matchesSkillset && matchesExperience && matchesHourlyRateMin && matchesHourlyRateMax && matchesName && matchesSearch;
+    });
     
     res.json({
       success: true,
-      data: serviceProviders,
-      count: serviceProviders.length,
+      data: filteredProviders,
+      count: filteredProviders.length,
       message: 'Filtered service providers retrieved successfully'
     });
   } catch (error) {
@@ -342,28 +308,19 @@ router.post('/sp-filter', async (req: FilterRequest, res: Response) => {
 
 router.get('/sp-stats', async (req: Request, res: Response) => {
   try {
-    const serviceProviderRepository = getRepository(ServiceProvider);
+    const totalCount = await prismaService.getPrismaClient().serviceProvider.count({ where: { isActive: true } });
     
-  
-    const totalCount = await serviceProviderRepository.count({ where: { isActive: true } });
+    const cityStats = await prismaService.getPrismaClient().serviceProvider.groupBy({
+      by: ['city'],
+      where: { isActive: true },
+      _count: { _all: true }
+    });
     
-    
-    const cityStats = await serviceProviderRepository
-      .createQueryBuilder('provider')
-      .select('provider.city', 'city')
-      .addSelect('COUNT(*)', 'count')
-      .where('provider.isActive = :isActive', { isActive: true })
-      .groupBy('provider.city')
-      .getRawMany();
-    
-    
-    const skillsetStats = await serviceProviderRepository
-      .createQueryBuilder('provider')
-      .select('provider.skillset', 'skillset')
-      .addSelect('COUNT(*)', 'count')
-      .where('provider.isActive = :isActive', { isActive: true })
-      .groupBy('provider.skillset')
-      .getRawMany();
+    const skillsetStats = await prismaService.getPrismaClient().serviceProvider.groupBy({
+      by: ['skillset'],
+      where: { isActive: true },
+      _count: { _all: true }
+    });
     
     res.json({
       success: true,
