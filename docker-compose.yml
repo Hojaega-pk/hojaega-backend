@@ -1,4 +1,5 @@
 version: '3.8'
+
 services:
   db:
     image: postgres:15-alpine
@@ -10,5 +11,22 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: "postgresql://postgres:postgres@db:5432/hojaega_db?schema=public"
+      JWT_SECRET: "supersecretkey"
+      JWT_EXPIRES_IN: "7d"
+    command: >
+      sh -c "npx prisma migrate deploy &&
+             npm run start"
+
 volumes:
   pgdata:
+
+
