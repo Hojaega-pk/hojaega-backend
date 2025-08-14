@@ -70,7 +70,7 @@ app.get('/health', (req: Request, res: Response) => {
 app.get('/', (req: Request, res: Response) => {
   res.json({
     message: 'Welcome to Service Provider API',
-    domain: 'Hojaega.pk',
+    domain: 'Hojaega.pk (Production)',
     version: process.env.npm_package_version || '1.0.0',
     endpoints: {
       health: 'https://Hojaega.pk/health',
@@ -83,7 +83,8 @@ app.get('/', (req: Request, res: Response) => {
         update: 'https://Hojaega.pk/api/sp-update/{id}',
         delete: 'https://Hojaega.pk/api/sp-delete/{id}',
         filter: 'https://Hojaega.pk/api/sp-filter (POST)',
-        stats: 'https://Hojaega.pk/api/sp-stats'
+        stats: 'https://Hojaega.pk/api/sp-stats',
+        cities: 'https://Hojaega.pk/api/cities'
       }
     }
   });
@@ -126,6 +127,7 @@ createConnection(productionConfig.database)
       console.log(`   • Delete: https://Hojaega.pk/api/sp-delete/{id}`);
       console.log(`   • Filter: https://Hojaega.pk/api/sp-filter (POST)`);
       console.log(`   • Stats: https://Hojaega.pk/api/sp-stats`);
+      console.log(`   • Cities: https://Hojaega.pk/api/cities`);
       console.log(`Environment: ${process.env.NODE_ENV || 'production'}`);
     });
   })

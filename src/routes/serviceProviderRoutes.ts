@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { validateServiceProvider } from '../middleware/validation';
 import { prismaService } from '../services/prisma.service';
+import { SubscriptionService } from '../services/subscription.service';
 
 
 interface ServiceProviderRequestBody {
@@ -11,7 +12,6 @@ interface ServiceProviderRequestBody {
   email?: string;
   description?: string;
   experience?: string;
-  hourlyRate?: string | number;
 }
 
 
@@ -19,8 +19,6 @@ interface FilterRequestBody {
   city?: string;
   skillset?: string;
   experience?: string;
-  hourlyRateMin?: number;
-  hourlyRateMax?: number;
   name?: string;
   search?: string; 
 }
@@ -100,14 +98,14 @@ router.get('/sp-get/:id', async (req: Request, res: Response) => {
 
 router.post('/sp-create', validateServiceProvider, async (req: TypedRequest, res: Response) => {
   try {
-    const { name, city, skillset, contactNo, email, description, experience, hourlyRate } = req.body;
+    const { name, city, skillset, contactNo, email, description, experience } = req.body;
 
     // Check if service provider already exists
     const existingProvider = await prismaService.getPrismaClient().serviceProvider.findFirst({
       where: {
         OR: [
           { contactNo },
-          { email: email || undefined }
+          { email: email || null }
         ]
       }
     });
@@ -119,17 +117,24 @@ router.post('/sp-create', validateServiceProvider, async (req: TypedRequest, res
       });
     }
 
+    // Calculate subscription dates
+    const subscriptionStartDate = new Date();
+    const subscriptionEndDate = new Date();
+    subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1); // Add 1 month
+
     const serviceProvider = await prismaService.getPrismaClient().serviceProvider.create({
       data: {
         name,
         city,
         skillset,
         contactNo,
-        email,
-        description,
-        experience,
-        hourlyRate: hourlyRate ? parseFloat(hourlyRate.toString()) : null,
-        isActive: true
+        email: email || null,
+        description: description || null,
+        experience: experience || null,
+        isActive: true,
+        status: 1, // Active subscription
+        subscriptionStartDate,
+        subscriptionEndDate
       }
     });
 
@@ -152,7 +157,7 @@ router.post('/sp-create', validateServiceProvider, async (req: TypedRequest, res
 router.put('/sp-update/:id', validateServiceProvider, async (req: TypedRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, city, skillset, contactNo, email, description, experience, hourlyRate } = req.body;
+    const { name, city, skillset, contactNo, email, description, experience } = req.body;
 
     if (!id) {
       return res.status(400).json({
@@ -178,7 +183,7 @@ router.put('/sp-update/:id', validateServiceProvider, async (req: TypedRequest, 
       where: {
         OR: [
           { contactNo },
-          { email: email || undefined }
+          { email: email || null }
         ],
         NOT: { id: parseInt(id) }
       }
@@ -198,10 +203,9 @@ router.put('/sp-update/:id', validateServiceProvider, async (req: TypedRequest, 
         city,
         skillset,
         contactNo,
-        email,
-        description,
-        experience,
-        hourlyRate: hourlyRate ? parseFloat(hourlyRate.toString()) : null
+        email: email || null,
+        description: description || null,
+        experience: experience || null
       }
     });
 
@@ -267,7 +271,7 @@ router.delete('/sp-delete/:id', async (req: Request, res: Response) => {
 
 router.post('/sp-filter', async (req: FilterRequest, res: Response) => {
   try {
-    const { city, skillset, experience, hourlyRateMin, hourlyRateMax, name, search } = req.body;
+    const { city, skillset, experience, name, search } = req.body;
     
     const serviceProviders = await prismaService.getPrismaClient().serviceProvider.findMany({
       where: { isActive: true },
@@ -278,15 +282,13 @@ router.post('/sp-filter', async (req: FilterRequest, res: Response) => {
       const matchesCity = city ? provider.city.toLowerCase().includes(city.toLowerCase()) : true;
       const matchesSkillset = skillset ? provider.skillset.toLowerCase().includes(skillset.toLowerCase()) : true;
       const matchesExperience = experience ? provider.experience === experience : true;
-      const matchesHourlyRateMin = hourlyRateMin !== undefined ? provider.hourlyRate >= hourlyRateMin : true;
-      const matchesHourlyRateMax = hourlyRateMax !== undefined ? provider.hourlyRate <= hourlyRateMax : true;
       const matchesName = name ? provider.name.toLowerCase().includes(name.toLowerCase()) : true;
       const matchesSearch = search ? 
         provider.name.toLowerCase().includes(search.toLowerCase()) || 
         provider.city.toLowerCase().includes(search.toLowerCase()) || 
         provider.skillset.toLowerCase().includes(search.toLowerCase()) : true;
 
-      return matchesCity && matchesSkillset && matchesExperience && matchesHourlyRateMin && matchesHourlyRateMax && matchesName && matchesSearch;
+      return matchesCity && matchesSkillset && matchesExperience && matchesName && matchesSearch;
     });
     
     res.json({
@@ -333,6 +335,183 @@ router.get('/sp-stats', async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Error fetching service provider statistics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Cities API endpoint - returns unique cities where service providers are available
+router.get('/cities', async (req: Request, res: Response) => {
+  try {
+    // Get unique cities from active service providers
+    const cities = await prismaService.getPrismaClient().serviceProvider.findMany({
+      where: { isActive: true },
+      select: { city: true },
+      distinct: ['city'],
+      orderBy: { city: 'asc' }
+    });
+    
+    // Extract city names from the result
+    const cityList = cities.map(item => item.city);
+    
+    res.json({
+      success: true,
+      data: cityList,
+      count: cityList.length,
+      message: 'Cities list retrieved successfully'
+    });
+  } catch (error) {
+    console.error('Error fetching cities:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * Get subscription status for a specific service provider
+ * GET /api/sp-subscription-status/:id
+ */
+router.get('/sp-subscription-status/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID parameter is required'
+      });
+    }
+
+    const subscriptionStatus = await SubscriptionService.getSubscriptionStatus(parseInt(id));
+    
+    if (!subscriptionStatus) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service provider not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: subscriptionStatus
+    });
+  } catch (error) {
+    console.error('Error getting subscription status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * Renew subscription for a service provider
+ * POST /api/sp-renew-subscription/:id
+ */
+router.post('/sp-renew-subscription/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { months = 1 } = req.body;
+    
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID parameter is required'
+      });
+    }
+
+    const renewed = await SubscriptionService.renewSubscription(parseInt(id), months);
+    
+    if (!renewed) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service provider not found or renewal failed'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Subscription renewed successfully for ${months} month(s)`
+    });
+  } catch (error) {
+    console.error('Error renewing subscription:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * Pending API - Get service providers with expired subscriptions
+ * GET /api/sp-pending
+ */
+router.get('/sp-pending', async (req: Request, res: Response) => {
+  try {
+    const currentDate = new Date();
+    
+    // Find service providers with expired subscriptions (status = 0 or subscriptionEndDate < currentDate)
+    const pendingProviders = await prismaService.getPrismaClient().serviceProvider.findMany({
+      where: {
+        OR: [
+          { status: 0 }, // Explicitly expired
+          {
+            subscriptionEndDate: {
+              lt: currentDate // Subscription end date is in the past
+            }
+          }
+        ],
+        isActive: true // Only active service providers
+      },
+      orderBy: { subscriptionEndDate: 'asc' }
+    });
+
+    // Update status for providers whose subscription has expired
+    for (const provider of pendingProviders) {
+      if (provider.subscriptionEndDate && provider.subscriptionEndDate < currentDate && provider.status !== 0) {
+        await prismaService.getPrismaClient().serviceProvider.update({
+          where: { id: provider.id },
+          data: { status: 0 }
+        });
+      }
+    }
+
+    // Get the updated list
+    const updatedPendingProviders = await prismaService.getPrismaClient().serviceProvider.findMany({
+      where: {
+        OR: [
+          { status: 0 },
+          {
+            subscriptionEndDate: {
+              lt: currentDate
+            }
+          }
+        ],
+        isActive: true
+      },
+      orderBy: { subscriptionEndDate: 'asc' }
+    });
+
+    res.json({
+      success: true,
+      data: updatedPendingProviders.map(provider => ({
+        ...provider,
+        message: 'Subscription period ended. Please complete your payment to continue services.',
+        daysExpired: provider.subscriptionEndDate ? 
+          Math.ceil((currentDate.getTime() - provider.subscriptionEndDate.getTime()) / (1000 * 60 * 60 * 24)) : 0
+      })),
+      count: updatedPendingProviders.length,
+      message: `Found ${updatedPendingProviders.length} service providers with expired subscriptions`
+    });
+  } catch (error) {
+    console.error('Error fetching pending service providers:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error',
