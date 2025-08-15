@@ -7,7 +7,7 @@ export interface ValidationError {
 
 export const validateServiceProvider = (req: Request, res: Response, next: NextFunction) => {
   const errors: ValidationError[] = [];
-  const { name, city, skillset, contactNo, email } = req.body;
+  const { name, city, skillset, contactNo } = req.body;
 
   // Name validation
   if (!name || typeof name !== 'string') {
@@ -45,13 +45,7 @@ export const validateServiceProvider = (req: Request, res: Response, next: NextF
     }
   }
 
-  // Email validation (optional field)
-  if (email && typeof email === 'string') {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      errors.push({ field: 'email', message: 'Please enter a valid email address' });
-    }
-  }
+
 
   if (errors.length > 0) {
     return res.status(400).json({

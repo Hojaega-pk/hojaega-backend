@@ -236,10 +236,8 @@
           "city": { "type": "string" },
           "skillset": { "type": "string" },
           "contactNo": { "type": "string" },
-          "email": { "type": "string" },
           "description": { "type": "string" },
-          "experience": { "type": "string" },
-          "hourlyRate": { "type": "number" }
+          "experience": { "type": "string" }
         },
         "required": ["name", "city", "skillset", "contactNo"]
       },
@@ -249,8 +247,6 @@
           "city": { "type": "string" },
           "skillset": { "type": "string" },
           "experience": { "type": "string" },
-          "hourlyRateMin": { "type": "number" },
-          "hourlyRateMax": { "type": "number" },
           "name": { "type": "string" },
           "search": { "type": "string" }
         }

@@ -9,7 +9,6 @@ interface ServiceProviderRequestBody {
   city: string;
   skillset: string;
   contactNo: string;
-  email?: string;
   description?: string;
   experience?: string;
 }
@@ -98,22 +97,19 @@ router.get('/sp-get/:id', async (req: Request, res: Response) => {
 
 router.post('/sp-create', validateServiceProvider, async (req: TypedRequest, res: Response) => {
   try {
-    const { name, city, skillset, contactNo, email, description, experience } = req.body;
+    const { name, city, skillset, contactNo, description, experience } = req.body;
 
     // Check if service provider already exists
     const existingProvider = await prismaService.getPrismaClient().serviceProvider.findFirst({
       where: {
-        OR: [
-          { contactNo },
-          ...(email ? [{ email }] : [])
-        ]
+        contactNo
       }
     });
 
     if (existingProvider) {
       return res.status(400).json({
         success: false,
-        message: 'Service provider with this contact number or email already exists'
+        message: 'Service provider with this contact number already exists'
       });
     }
 
@@ -128,7 +124,6 @@ router.post('/sp-create', validateServiceProvider, async (req: TypedRequest, res
         city,
         skillset,
         contactNo,
-        email: email || null,
         description: description || null,
         experience: experience || null,
         isActive: true,
@@ -157,7 +152,7 @@ router.post('/sp-create', validateServiceProvider, async (req: TypedRequest, res
 router.put('/sp-update/:id', validateServiceProvider, async (req: TypedRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, city, skillset, contactNo, email, description, experience } = req.body;
+    const { name, city, skillset, contactNo, description, experience } = req.body;
 
     if (!id) {
       return res.status(400).json({
@@ -178,13 +173,10 @@ router.put('/sp-update/:id', validateServiceProvider, async (req: TypedRequest, 
       });
     }
 
-    // Check for duplicate contact/email (excluding current provider)
+    // Check for duplicate contact number (excluding current provider)
     const duplicateProvider = await prismaService.getPrismaClient().serviceProvider.findFirst({
       where: {
-        OR: [
-          { contactNo },
-          ...(email ? [{ email }] : [])
-        ],
+        contactNo,
         NOT: { id: parseInt(id) }
       }
     });
@@ -192,7 +184,7 @@ router.put('/sp-update/:id', validateServiceProvider, async (req: TypedRequest, 
     if (duplicateProvider) {
       return res.status(400).json({
         success: false,
-        message: 'Service provider with this contact number or email already exists'
+        message: 'Service provider with this contact number already exists'
       });
     }
 
@@ -203,7 +195,6 @@ router.put('/sp-update/:id', validateServiceProvider, async (req: TypedRequest, 
         city,
         skillset,
         contactNo,
-        email: email || null,
         description: description || null,
         experience: experience || null
       }

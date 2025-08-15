@@ -13,13 +13,12 @@ model ServiceProvider {
   city        String
   skillset    String
   contactNo   String
-  email       String?
   description String?
   experience  String?
   isActive    Boolean  @default(true)
   status      Int      @default(1) // 1 = active subscription, 0 = expired
   subscriptionStartDate DateTime @default(now())
-  subscriptionEndDate   DateTime?
+  subscriptionEndDate   DateTime
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
