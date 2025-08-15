@@ -53,14 +53,6 @@ export const validateServiceProvider = (req: Request, res: Response, next: NextF
     }
   }
 
-  // Hourly rate validation (optional field)
-  if (req.body.hourlyRate !== undefined) {
-    const hourlyRate = parseFloat(req.body.hourlyRate);
-    if (isNaN(hourlyRate) || hourlyRate < 0) {
-      errors.push({ field: 'hourlyRate', message: 'Hourly rate must be a positive number' });
-    }
-  }
-
   if (errors.length > 0) {
     return res.status(400).json({
       success: false,

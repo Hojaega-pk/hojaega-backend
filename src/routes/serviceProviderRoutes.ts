@@ -105,7 +105,7 @@ router.post('/sp-create', validateServiceProvider, async (req: TypedRequest, res
       where: {
         OR: [
           { contactNo },
-          { email: email || null }
+          ...(email ? [{ email }] : [])
         ]
       }
     });
@@ -183,7 +183,7 @@ router.put('/sp-update/:id', validateServiceProvider, async (req: TypedRequest, 
       where: {
         OR: [
           { contactNo },
-          { email: email || null }
+          ...(email ? [{ email }] : [])
         ],
         NOT: { id: parseInt(id) }
       }
