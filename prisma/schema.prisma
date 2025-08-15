@@ -1,13 +1,10 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./service_providers.db"
 }
 
 model ServiceProvider {
@@ -19,8 +16,10 @@ model ServiceProvider {
   email       String?
   description String?
   experience  String?
-  hourlyRate  Float?
   isActive    Boolean  @default(true)
+  status      Int      @default(1) // 1 = active subscription, 0 = expired
+  subscriptionStartDate DateTime @default(now())
+  subscriptionEndDate   DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

@@ -62,7 +62,11 @@ app.get('/', (req: Request, res: Response) => {
         update: 'http://localhost:3000/api/sp-update/{id}',
         delete: 'http://localhost:3000/api/sp-delete/{id}',
         filter: 'http://localhost:3000/api/sp-filter (POST)',
-        stats: 'http://localhost:3000/api/sp-stats'
+        stats: 'http://localhost:3000/api/sp-stats',
+        cities: 'http://localhost:3000/api/cities',
+        pending: 'http://localhost:3000/api/sp-pending',
+        subscriptionStatus: 'http://localhost:3000/api/sp-subscription-status/{id}',
+        renewSubscription: 'http://localhost:3000/api/sp-renew-subscription/{id} (POST)'
       }
     }
   });
@@ -86,6 +90,10 @@ async function startServer() {
       console.log(`   • Delete: http://localhost:3000/api/sp-delete/{id}`);
       console.log(`   • Filter: http://localhost:3000/api/sp-filter (POST)`);
       console.log(`   • Stats: http://localhost:3000/api/sp-stats`);
+      console.log(`   • Cities: http://localhost:3000/api/cities`);
+      console.log(`   • Pending: http://localhost:3000/api/sp-pending`);
+      console.log(`   • Subscription Status: http://localhost:3000/api/sp-subscription-status/{id}`);
+      console.log(`   • Renew Subscription: http://localhost:3000/api/sp-renew-subscription/{id} (POST)`);
       console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     });
   } catch (error: any) {

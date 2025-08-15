@@ -1,40 +1,18 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
-@Entity('service_providers')
-export class ServiceProvider {
-  @PrimaryGeneratedColumn()
-  id!: number;
-
-  @Column({ type: 'varchar', length: 100, nullable: false })
-  name!: string;
-
-  @Column({ type: 'varchar', length: 100, nullable: false })
-  city!: string;
-
-  @Column({ type: 'text', nullable: false })
-  skillset!: string;
-
-  @Column({ type: 'varchar', length: 20, nullable: false })
-  contactNo!: string;
-
-  @Column({ type: 'varchar', length: 100, nullable: true })
+export interface ServiceProvider {
+  id: number;
+  name: string;
+  city: string;
+  skillset: string;
+  contactNo: string;
   email?: string;
-
-  @Column({ type: 'text', nullable: true })
   description?: string;
-
-  @Column({ type: 'varchar', length: 50, nullable: true })
   experience?: string;
-
-  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
-  hourlyRate?: number;
-
-  @Column({ type: 'boolean', default: true })
-  isActive!: boolean;
-
-  @CreateDateColumn()
-  createdAt!: Date;
-
-  @UpdateDateColumn()
-  updatedAt!: Date;
+  isActive: boolean;
+  status: number; // 1 = active subscription, 0 = expired
+  subscriptionStartDate: Date;
+  subscriptionEndDate?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }

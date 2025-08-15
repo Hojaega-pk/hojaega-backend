@@ -68,8 +68,7 @@ Request Body:
   "contactNo": "string (required)",
   "email": "string (optional)",
   "description": "string (optional)",
-  "experience": "string (optional)",
-  "hourlyRate": "number (optional)"
+  "experience": "string (optional)"
 }
 ```
 
@@ -82,8 +81,7 @@ Example Request:
   "contactNo": "+92-300-1234567",
   "email": "ahmed@example.com",
   "description": "Professional plumber with 5 years experience",
-  "experience": "5 years",
-  "hourlyRate": 25.50
+  "experience": "5 years"
 }
 ```
 
@@ -101,7 +99,6 @@ Response (201 Created):
     "email": "ahmed@example.com",
     "description": "Professional plumber with 5 years experience",
     "experience": "5 years",
-    "hourlyRate": 25.50,
     "isActive": true,
     "createdAt": "2024-01-15T10:30:00.000Z",
     "updatedAt": "2024-01-15T10:30:00.000Z"
@@ -112,7 +109,6 @@ Response (201 Created):
 Validation Rules:
 - `name`, `city`, `skillset`, `contactNo` are required
 - `contactNo` must be unique among active providers
-- `hourlyRate` should be a positive number
 
 ---
 
@@ -135,7 +131,6 @@ Response:
       "email": "ahmed@example.com",
       "description": "Professional plumber with 5 years experience",
       "experience": "5 years",
-      "hourlyRate": 25.50,
       "isActive": true,
       "createdAt": "2024-01-15T10:30:00.000Z",
       "updatedAt": "2024-01-15T10:30:00.000Z"
@@ -419,9 +414,221 @@ Response:
 
 ---
 
+### 9. Get Cities List
+GET `/api/cities`
+
+Get a list of unique cities where service providers are available.
+
+Response:
+```json
+{
+  "success": true,
+  "data": [
+    "Islamabad",
+    "Karachi",
+    "Lahore"
+  ],
+  "count": 3,
+  "message": "Cities list retrieved successfully"
+}
+```
+
+Notes:
+- Only returns cities where active service providers exist
+- Cities are sorted alphabetically (A-Z)
+- No duplicate cities in the response
+- Useful for populating city dropdowns or filters
+
+---
+
+### 10. Get Pending Service Providers
+GET `/api/sp-pending`
+
+Get all service providers whose subscriptions have expired and need payment renewal.
+
+**Purpose**: Identifies service providers with expired subscriptions who need to complete payment to continue services.
+
+Response:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Ahmed Khan",
+      "city": "Karachi",
+      "skillset": "Plumbing",
+      "contactNo": "+92-300-1234567",
+      "email": "ahmed@example.com",
+      "description": "Professional plumber with 5 years experience",
+      "experience": "5 years",
+      "isActive": true,
+      "status": 0,
+      "subscriptionStartDate": "2024-01-01T00:00:00.000Z",
+      "subscriptionEndDate": "2024-02-01T00:00:00.000Z",
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z",
+      "message": "Subscription period ended. Please complete your payment to continue services.",
+      "daysExpired": 5
+    }
+  ],
+  "count": 1,
+  "message": "Found 1 service providers with expired subscriptions"
+}
+```
+
+**Response Fields Explained**:
+- `status`: 0 = expired subscription, 1 = active subscription
+- `subscriptionStartDate`: When the subscription began
+- `subscriptionEndDate`: When the subscription expired
+- `message`: Clear instruction for the service provider
+- `daysExpired`: Number of days since subscription expired
+
+**Notes**:
+- Automatically updates expired subscriptions (status: 1 → 0)
+- Only returns active service providers (`isActive: true`)
+- Results are sorted by subscription end date (earliest expired first)
+- Useful for payment collection and subscription management
+
+---
+
+### 11. Get Subscription Status
+GET `/api/sp-subscription-status/{id}`
+
+Get detailed subscription information for a specific service provider.
+
+**Purpose**: Check the current subscription status, expiry dates, and remaining days for a specific service provider.
+
+Path Parameters:
+- `id` - Service provider ID (number)
+
+Example: `GET /api/sp-subscription-status/1`
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "providerId": 1,
+    "name": "Ahmed Khan",
+    "status": 1,
+    "isExpired": false,
+    "daysUntilExpiry": 15,
+    "subscriptionStartDate": "2024-01-01T00:00:00.000Z",
+    "subscriptionEndDate": "2024-02-01T00:00:00.000Z",
+    "message": "Subscription active. 15 days remaining."
+  }
+}
+```
+
+**Response Fields Explained**:
+- `status`: 1 = active, 0 = expired
+- `isExpired`: Boolean indicating if subscription has expired
+- `daysUntilExpiry`: Days remaining for active subscriptions
+- `message`: Human-readable status message
+
+**Status Messages**:
+- **Active**: "Subscription active. X days remaining."
+- **Expired**: "Subscription period ended. Please complete your payment to continue services."
+
+**Use Cases**:
+- Check subscription status before booking services
+- Monitor subscription health
+- Payment reminder systems
+- Customer support inquiries
+
+---
+
+### 12. Renew Subscription(Incomplete ,payment method??)
+POST `/api/sp-renew-subscription/{id}`
+
+Renew a service provider's subscription for a specified number of months.
+
+**Purpose**: Extend a service provider's subscription period after payment is received.
+
+Path Parameters:
+- `id` - Service provider ID (number)
+
+Request Body:
+```json
+{
+  "months": 3
+}
+```
+
+**Request Fields**:
+- `months`: Number of months to extend subscription (default: 1 if not specified)
+
+Example: `POST /api/sp-renew-subscription/1`
+
+Response:
+```json
+{
+  "success": true,
+  "message": "Subscription renewed successfully for 3 month(s)"
+}
+```
+
+**What Happens When Renewing**:
+1. `status` is updated from 0 to 1 (expired → active)
+2. `subscriptionStartDate` is set to current date
+3. `subscriptionEndDate` is extended by specified months
+4. Provider becomes active again immediately
+
+**Example Renewal Scenarios**:
+- 1 month renewal: Extends by 30 days
+- 3 month renewal: Extends by 90 days
+- 6 month renewal: Extends by 180 days
+- 12 month renewal: Extends by 365 days
+
+**Error Response (404)**:
+```json
+{
+  "success": false,
+  "message": "Service provider not found or renewal failed"
+}
+```
+
+---
+
+## Subscription System Overview
+
+### How Subscriptions Work
+
+1. **New Service Provider Creation**:
+   - Automatically gets 1-month subscription
+   - `status` set to 1 (active)
+   - `subscriptionStartDate` = current date
+   - `subscriptionEndDate` = current date + 1 month
+
+2. **Subscription Lifecycle**:
+   ```
+   Active (status: 1) → Expires → Pending (status: 0) → Renewed → Active again
+   ```
+
+3. **Automatic Status Updates**:
+   - Pending API automatically detects expired subscriptions
+   - Updates status from 1 to 0 when subscription period ends
+   - No manual intervention required
+
+### Subscription Status Values
+
+- **1**: Active subscription (can provide services)
+- **0**: Expired subscription (needs payment renewal)
+
+### Business Benefits
+
+- **Automated Management**: No manual subscription tracking needed
+- **Payment Collection**: Clear identification of providers needing payment
+- **Service Continuity**: Providers can't operate without active subscription
+- **Revenue Tracking**: Monitor subscription renewals and payments
+- **Customer Experience**: Clear communication about subscription status
+
+---
+
 ## Data Models
 
-### ServiceProvider Entity
+### ServiceProvider Entity (Updated)
 ```typescript
 interface ServiceProvider {
   id: number;                    // Auto-generated unique ID
@@ -432,12 +639,19 @@ interface ServiceProvider {
   email?: string;                // Email address (optional)
   description?: string;           // Detailed description (optional)
   experience?: string;           // Years of experience (optional)
-  hourlyRate?: number;           // Hourly rate in currency (optional)
   isActive: boolean;             // Active status (true/false)
+  status: number;                // Subscription status (1 = active, 0 = expired)
+  subscriptionStartDate: Date;   // When subscription began
+  subscriptionEndDate: Date;     // When subscription expires
   createdAt: Date;               // Creation timestamp
   updatedAt: Date;               // Last update timestamp
 }
 ```
+
+**New Fields Added**:
+- `status`: Subscription status indicator
+- `subscriptionStartDate`: Subscription start timestamp
+- `subscriptionEndDate`: Subscription end timestamp
 
 ---
 
