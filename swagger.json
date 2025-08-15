@@ -1,0 +1,260 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Service Provider API",
+    "version": "1.0.0",
+    "description": "API for managing service providers (SQLite version)"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local server"
+    }
+  ],
+  "paths": {
+    "/api/sp-create": {
+      "post": {
+        "summary": "Create a new service provider",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceProvider"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Service provider created successfully"
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/api/sp-list": {
+      "get": {
+        "summary": "Get all service providers",
+        "responses": {
+          "200": {
+            "description": "List of service providers"
+          }
+        }
+      }
+    },
+    "/api/sp-get/{id}": {
+      "get": {
+        "summary": "Get a service provider by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service provider details"
+          },
+          "404": {
+            "description": "Service provider not found"
+          }
+        }
+      }
+    },
+    "/api/sp-update/{id}": {
+      "put": {
+        "summary": "Update a service provider by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceProvider"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Service provider updated successfully"
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "404": {
+            "description": "Service provider not found"
+          }
+        }
+      }
+    },
+    "/api/sp-delete/{id}": {
+      "delete": {
+        "summary": "Delete a service provider by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service provider deleted successfully"
+          },
+          "404": {
+            "description": "Service provider not found"
+          }
+        }
+      }
+    },
+    "/api/sp-filter": {
+      "post": {
+        "summary": "Filter service providers",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceProviderFilter"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Filtered list of service providers"
+          }
+        }
+      }
+    },
+    "/api/sp-stats": {
+      "get": {
+        "summary": "Get service provider statistics",
+        "responses": {
+          "200": {
+            "description": "Statistics data"
+          }
+        }
+      }
+    },
+    "/api/cities": {
+      "get": {
+        "summary": "Get unique cities where service providers are available",
+        "responses": {
+          "200": {
+            "description": "List of unique cities"
+          }
+        }
+      }
+    },
+    "/api/sp-pending": {
+      "get": {
+        "summary": "Get pending service providers",
+        "responses": {
+          "200": {
+            "description": "List of pending service providers"
+          }
+        }
+      }
+    },
+    "/api/sp-subscription-status/{id}": {
+      "get": {
+        "summary": "Get subscription status for a service provider",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subscription status"
+          },
+          "404": {
+            "description": "Service provider not found"
+          }
+        }
+      }
+    },
+    "/api/sp-renew-subscription/{id}": {
+      "post": {
+        "summary": "Renew subscription for a service provider",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subscription renewed successfully"
+          },
+          "400": {
+            "description": "Renewal error"
+          },
+          "404": {
+            "description": "Service provider not found"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ServiceProvider": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "city": { "type": "string" },
+          "skillset": { "type": "string" },
+          "contactNo": { "type": "string" },
+          "email": { "type": "string" },
+          "description": { "type": "string" },
+          "experience": { "type": "string" },
+          "hourlyRate": { "type": "number" }
+        },
+        "required": ["name", "city", "skillset", "contactNo"]
+      },
+      "ServiceProviderFilter": {
+        "type": "object",
+        "properties": {
+          "city": { "type": "string" },
+          "skillset": { "type": "string" },
+          "experience": { "type": "string" },
+          "hourlyRateMin": { "type": "number" },
+          "hourlyRateMax": { "type": "number" },
+          "name": { "type": "string" },
+          "search": { "type": "string" }
+        }
+      }
+    }
+  }
+}
