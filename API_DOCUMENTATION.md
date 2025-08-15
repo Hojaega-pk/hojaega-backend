@@ -168,10 +168,8 @@ Response:
     "city": "Karachi",
     "skillset": "Plumbing",
     "contactNo": "+92-300-1234567",
-    "email": "ahmed@example.com",
     "description": "Professional plumber with 5 years experience",
     "experience": "5 years",
-    "hourlyRate": 25.50,
     "isActive": true,
     "createdAt": "2024-01-15T10:30:00.000Z",
     "updatedAt": "2024-01-15T10:30:00.000Z"
@@ -212,10 +210,8 @@ Response:
     "city": "Karachi",
     "skillset": "Plumbing",
     "contactNo": "+92-300-1234567",
-    "email": "ahmed.updated@example.com",
     "description": "Updated description",
     "experience": "6 years",
-    "hourlyRate": 30.00,
     "isActive": true,
     "createdAt": "2024-01-15T10:30:00.000Z",
     "updatedAt": "2024-01-15T11:00:00.000Z"
@@ -261,8 +257,6 @@ Request Body:
   "city": "string (optional)",
   "skillset": "string (optional)",
   "experience": "string (optional)",
-  "hourlyRateMin": "number (optional)",
-  "hourlyRateMax": "number (optional)",
   "name": "string (optional)",
   "search": "string (optional)"
 }
@@ -275,8 +269,6 @@ All fields are optional. Use any combination you need.
 - `city`: Exact city match (case-insensitive)
 - `skillset`: Partial skillset match (case-insensitive)
 - `experience`: Exact experience match
-- `hourlyRateMin`: Minimum hourly rate
-- `hourlyRateMax`: Maximum hourly rate
 - `name`: Partial name match (case-insensitive)
 - `search`: General search across name, city, and skillset (case-insensitive)
 
@@ -296,13 +288,7 @@ All fields are optional. Use any combination you need.
 }
 ```
 
-3. Filter by Hourly Rate Range:
-```json
-{
-  "hourlyRateMin": 20,
-  "hourlyRateMax": 50
-}
-```
+
 
 4. Search by Name:
 ```json
@@ -324,7 +310,6 @@ All fields are optional. Use any combination you need.
   "city": "Lahore",
   "skillset": "electrical",
   "experience": "3 years",
-  "hourlyRateMin": 25,
   "search": "professional"
 }
 ```
@@ -345,10 +330,8 @@ Response:
       "city": "Karachi",
       "skillset": "Plumbing",
       "contactNo": "+92-300-1234567",
-      "email": "ahmed@example.com",
       "description": "Professional plumber with 5 years experience",
       "experience": "5 years",
-      "hourlyRate": 25.50,
       "isActive": true,
       "createdAt": "2024-01-15T10:30:00.000Z",
       "updatedAt": "2024-01-15T10:30:00.000Z"
@@ -363,7 +346,6 @@ Filter Logic:
 - All filters use AND logic (all conditions must be met)
 - City and name searches are case-insensitive
 - Skillset and search use partial matching with wildcards
-- Hourly rate filters support ranges and individual min/max values
 - Only active providers are returned
 
 ---
