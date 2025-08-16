@@ -1,4 +1,4 @@
-import express = require('express');
+import express from 'express';
 import { Request, Response, NextFunction } from 'express';
 import { serviceProviderRoutes } from './routes/serviceProviderRoutes';
 import consumerRoutes from './routes/consumerRoutes';
@@ -14,7 +14,8 @@ setupSwagger(app);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/screenshots', express.static(path.join(__dirname, '../screenshots')));
-
+app.use('/api', serviceProviderRoutes);
+app.use('/api', consumerRoutes);
 
 // CORS middleware for localhost (will be updated to Hojaega.pk when deployed)
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -35,10 +36,6 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     next();
   }
 });
-
-// Routes
-app.use('/api', serviceProviderRoutes);
-app.use('/api', consumerRoutes);
 
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {
@@ -89,23 +86,7 @@ async function startServer() {
     app.listen(Number(PORT), String(HOST), () => {
       console.log('Service Provider API is running!');
       console.log(`Server: http://${HOST}:${PORT}`);
-      console.log(`Domain: localhost:3000 (Development)`);
-      console.log(`Health check: http://localhost:3000/health`);
-      console.log(`API endpoints:`);
-      console.log(`   • Documentation: http://localhost:3000/api-docs/`);
-      console.log(`   • Consumer Create: http://localhost:3000/api/consumer-create`);
-      console.log(`   • Create: http://localhost:3000/api/sp-create`);
-      console.log(`   • List: http://localhost:3000/api/sp-list`);
-      console.log(`   • Get: http://localhost:3000/api/sp-get/{id}`);
-      console.log(`   • Update: http://localhost:3000/api/sp-update/{id}`);
-      console.log(`   • Delete: http://localhost:3000/api/sp-delete/{id}`);
-      console.log(`   • Filter: http://localhost:3000/api/sp-filter (POST)`);
-      console.log(`   • Stats: http://localhost:3000/api/sp-stats`);
-      console.log(`   • Cities: http://localhost:3000/api/cities`);
-      console.log(`   • Pending: http://localhost:3000/api/sp-pending`);
-      console.log(`   • Subscription Status: http://localhost:3000/api/sp-subscription-status/{id}`);
-      console.log(`   • Renew Subscription: http://localhost:3000/api/sp-renew-subscription/{id} (POST)`);
-      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      // ...existing logs...
     });
   } catch (error: any) {
     console.error('Database connection failed:', error);
