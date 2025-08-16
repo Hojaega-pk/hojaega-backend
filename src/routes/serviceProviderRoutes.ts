@@ -6,11 +6,22 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
+const router = Router();
+
 // Ensure screenshots folder exists
 const uploadDir = path.join(__dirname, '../../screenshots');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
+
+function imageFilter(req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) {
+  // Accept images only
+  if (!file.mimetype.startsWith('image/')) {
+    return cb(new Error('Only image files are allowed!'));
+  }
+  cb(null, true);
+}
+
 
 // Multer config
 const storage = multer.diskStorage({
@@ -56,9 +67,6 @@ interface TypedRequest extends Request {
 interface FilterRequest extends Request {
   body: FilterRequestBody;
 }
-
-const router = Router();
-
 
 router.get('/sp-list', async (req: Request, res: Response) => {
   try {
@@ -589,33 +597,31 @@ router.get('/images/:filename', async (req: Request, res: Response) => {
 
 router.post('/payment-upload', upload.single('screenshot'), async (req: Request, res: Response) => {
   try {
-    const { serviceId, amount } = req.body;
-    if (!req.file) {
-      return res.status(400).json({ error: 'Screenshot is required' });
-    }
+    const { serviceProviderId, amount } = req.body;
 
-    const payment = await prismaService.serviceProviderPayment.create({
-      data: {
-        serviceId: Number(serviceId),
-    // Validate serviceId and amount
-    const parsedServiceId = Number(serviceId);
+    const parsedServiceProviderId = Number(serviceProviderId);
     const parsedAmount = Number(amount);
+
     if (
-      !serviceId ||
-      isNaN(parsedServiceId) ||
-      parsedServiceId <= 0 ||
+      !serviceProviderId ||
+      isNaN(parsedServiceProviderId) ||
+      parsedServiceProviderId <= 0 ||
       !amount ||
       isNaN(parsedAmount) ||
       parsedAmount <= 0
     ) {
-      return res.status(400).json({ error: 'serviceId and amount must be valid positive numbers' });
+      return res.status(400).json({ error: 'serviceProviderId and amount must be valid positive numbers' });
     }
 
-    const payment = await prisma.serviceProviderPayment.create({
+    if (!req.file) {
+      return res.status(400).json({ error: 'Screenshot is required' });
+    }
+
+    const payment = await prismaService.getPrismaClient().serviceProviderPayment.create({
       data: {
-        serviceId: parsedServiceId,
+        serviceProviderId: parsedServiceProviderId,
         amount: parsedAmount,
-        screenshot: `/screenshots/${req.file.filename}`
+        screenshotPath: `/screenshots/${req.file.filename}`
       }
     });
 
@@ -630,4 +636,3 @@ router.post('/payment-upload', upload.single('screenshot'), async (req: Request,
 });
 
 export { router as serviceProviderRoutes };
-

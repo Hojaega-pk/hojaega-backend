@@ -8,22 +8,37 @@ datasource db {
 }
 
 model ServiceProvider {
-  id          Int      @id @default(autoincrement())
-  name        String
-  city        String
-  skillset    String
-  contactNo   String
-  description String?
-  experience  String?
-  isActive    Boolean  @default(true)
-  status      Int      @default(1) // 1 = active subscription, 0 = expired
-  subscriptionStartDate DateTime @default(now())
+  id                    Int                       @id @default(autoincrement())
+  name                  String
+  city                  String
+  skillset              String
+  contactNo             String
+  description           String?
+  experience            String?
+  isActive              Boolean                   @default(true)
+  status                Int                       @default(1)
+  subscriptionStartDate DateTime                  @default(now())
   subscriptionEndDate   DateTime
-  screenshot  String?  // Image URL for payment proof (e.g., http://localhost:3000/images/payment_proof.jpg)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+
+  // Relation: One service provider can have many payments
+  payments ServiceProviderPayment[]
 
   @@map("service_providers")
+}
+
+model ServiceProviderPayment {
+  id                Int            @id @default(autoincrement())
+  serviceProviderId Int
+  amount            Float
+  screenshotPath    String?        // stores relative path of uploaded screenshot
+  createdAt         DateTime       @default(now())
+
+  // Relation: Payment belongs to one service provider
+  serviceProvider   ServiceProvider @relation(fields: [serviceProviderId], references: [id])
+
+  @@map("service_provider_payments")
 }
 
 model Consumer {
