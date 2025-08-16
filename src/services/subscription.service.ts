@@ -32,7 +32,7 @@ export class SubscriptionService {
   /**
    * Renew subscription for a service provider
    */
-  static async renewSubscription(providerId: number, months: number = 1): Promise<boolean> {
+  static async renewSubscription(providerId: number, months: number = 1, screenshot: string): Promise<boolean> {
     try {
       const provider = await prismaService.getPrismaClient().serviceProvider.findFirst({
         where: { id: providerId, isActive: true }
@@ -50,7 +50,8 @@ export class SubscriptionService {
         data: {
           status: 1,
           subscriptionStartDate: new Date(),
-          subscriptionEndDate: newEndDate
+          subscriptionEndDate: newEndDate,
+          screenshot: screenshot || null
         }
       });
 
@@ -88,6 +89,7 @@ export class SubscriptionService {
         daysUntilExpiry: Math.max(0, daysUntilExpiry),
         subscriptionStartDate: provider.subscriptionStartDate,
         subscriptionEndDate: provider.subscriptionEndDate,
+        screenshot: provider.screenshot,
         message: isExpired ? 
           'Subscription period ended. Please complete your payment to continue services.' :
           `Subscription active. ${daysUntilExpiry} days remaining.`

@@ -1,9 +1,9 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "Service Provider API",
+    "title": "Service Provider & Consumer API",
     "version": "1.0.0",
-    "description": "API for managing service providers (SQLite version)"
+    "description": "API for managing service providers and consumers (SQLite version)"
   },
   "servers": [
     {
@@ -11,10 +11,21 @@
       "description": "Local server"
     }
   ],
+  "tags": [
+    {
+      "name": "Service Providers",
+      "description": "Operations related to service providers"
+    },
+    {
+      "name": "Consumers",
+      "description": "Operations related to consumers"
+    }
+  ],
   "paths": {
     "/api/sp-create": {
       "post": {
         "summary": "Create a new service provider",
+        "tags": ["Service Providers"],
         "requestBody": {
           "required": true,
           "content": {
@@ -38,6 +49,7 @@
     "/api/sp-list": {
       "get": {
         "summary": "Get all service providers",
+        "tags": ["Service Providers"],
         "responses": {
           "200": {
             "description": "List of service providers"
@@ -48,6 +60,7 @@
     "/api/sp-get/{id}": {
       "get": {
         "summary": "Get a service provider by ID",
+        "tags": ["Service Providers"],
         "parameters": [
           {
             "name": "id",
@@ -213,6 +226,29 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "months": {
+                    "type": "integer",
+                    "description": "Number of months to renew (default: 1)",
+                    "default": 1
+                  },
+                  "screenshot": {
+                    "type": "string",
+                    "description": "Image URL for payment proof (e.g., http://localhost:3000/images/payment_proof.jpg)",
+                    "format": "uri"
+                  }
+                },
+                "required": ["screenshot"]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Subscription renewed successfully"
@@ -222,6 +258,106 @@
           },
           "404": {
             "description": "Service provider not found"
+          }
+        }
+      }
+    },
+    "/api/consumer-create": {
+      "post": {
+        "summary": "Create a new consumer",
+        "description": "Creates a new consumer with name, city, and 4-digit PIN. Validates that the consumer doesn't already exist with the same name and city combination.",
+        "tags": ["Consumers"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Consumer"
+              },
+              "examples": {
+                "validConsumer": {
+                  "summary": "Valid consumer data",
+                  "value": {
+                    "name": "John Doe",
+                    "city": "Karachi",
+                    "pin": "1234"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Consumer created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "data": { "$ref": "#/components/schemas/ConsumerResponse" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error - missing or invalid fields",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { "type": "string" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - consumer already exists with same name and city",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { "type": "string" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+
+    "/api/images/{filename}": {
+      "get": {
+        "summary": "Serve payment proof images",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Image filename"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Image served successfully"
+          },
+          "400": {
+            "description": "Filename required"
           }
         }
       }
@@ -237,9 +373,17 @@
           "skillset": { "type": "string" },
           "contactNo": { "type": "string" },
           "description": { "type": "string" },
-          "experience": { "type": "string" }
+          "experience": { "type": "string" },
+          "screenshot": { "type": "string", "description": "Image URL for payment proof" },
+          "pin": { 
+            "type": "string", 
+            "description": "4-digit PIN code",
+            "pattern": "^[0-9]{4}$",
+            "minLength": 4,
+            "maxLength": 4
+          }
         },
-        "required": ["name", "city", "skillset", "contactNo"]
+        "required": ["name", "city", "skillset", "contactNo", "pin"]
       },
       "ServiceProviderFilter": {
         "type": "object",
@@ -249,6 +393,67 @@
           "experience": { "type": "string" },
           "name": { "type": "string" },
           "search": { "type": "string" }
+        }
+      },
+      "Consumer": {
+        "type": "object",
+        "properties": {
+          "name": { 
+            "type": "string",
+            "description": "Consumer's full name",
+            "example": "John Doe"
+          },
+          "city": { 
+            "type": "string",
+            "description": "Consumer's city",
+            "example": "Karachi"
+          },
+          "pin": { 
+            "type": "string", 
+            "description": "4-digit PIN code",
+            "pattern": "^[0-9]{4}$",
+            "minLength": 4,
+            "maxLength": 4,
+            "example": "1234"
+          }
+        },
+        "required": ["name", "city", "pin"]
+      },
+      "ConsumerResponse": {
+        "type": "object",
+        "properties": {
+          "id": { 
+            "type": "integer",
+            "description": "Unique consumer ID",
+            "example": 1
+          },
+          "name": { 
+            "type": "string",
+            "description": "Consumer's full name",
+            "example": "John Doe"
+          },
+          "city": { 
+            "type": "string",
+            "description": "Consumer's city",
+            "example": "Karachi"
+          },
+          "pin": { 
+            "type": "string", 
+            "description": "4-digit PIN code",
+            "example": "1234"
+          },
+          "createdAt": { 
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation timestamp",
+            "example": "2024-01-15T10:30:00Z"
+          },
+          "updatedAt": { 
+            "type": "string",
+            "format": "date-time",
+            "description": "Last update timestamp",
+            "example": "2024-01-15T10:30:00Z"
+          }
         }
       }
     }

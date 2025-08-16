@@ -23,12 +23,57 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+**Hojaega Backend API** - A comprehensive API for managing service providers and consumers, built with Express.js, TypeScript, and Prisma ORM.
+
+### Features
+- **Service Provider Management**: Create, read, update, delete, and filter service providers
+- **Consumer Management**: Create consumers with name, city, and PIN validation
+- **Subscription Management**: Handle service provider subscriptions and renewals
+- **Database**: SQLite with Prisma ORM for type-safe database operations
+- **API Documentation**: Swagger/OpenAPI 3.0 specification
+- **Validation**: Comprehensive input validation and error handling
+
+### Tech Stack
+- **Runtime**: Node.js with Express.js
+- **Language**: TypeScript
+- **Database**: SQLite with Prisma ORM
+- **Documentation**: Swagger/OpenAPI 3.0
+- **Validation**: Custom validation middleware
 
 ## Project setup
 
 ```bash
 $ npm install
+```
+
+## API Endpoints
+
+### Service Providers
+- `POST /api/sp-create` - Create a new service provider
+- `GET /api/sp-list` - Get all service providers
+- `GET /api/sp-get/{id}` - Get service provider by ID
+- `PUT /api/sp-update/{id}` - Update service provider
+- `DELETE /api/sp-delete/{id}` - Delete service provider
+- `POST /api/sp-filter` - Filter service providers
+- `GET /api/sp-stats` - Get service provider statistics
+- `GET /api/cities` - Get unique cities
+- `GET /api/sp-pending` - Get pending service providers
+- `GET /api/sp-subscription-status/{id}` - Get subscription status
+- `POST /api/sp-renew-subscription/{id}` - Renew subscription
+
+### Consumers
+- `POST /api/consumer-create` - Create a new consumer
+
+### Health & Documentation
+- `GET /health` - Health check endpoint
+- `GET /api-docs` - API documentation (Swagger UI)
+
+## API Documentation
+
+The API is fully documented using Swagger/OpenAPI 3.0. After starting the server, you can view the interactive documentation at:
+
+```
+http://localhost:3000/api-docs
 ```
 
 ## Compile and run the project

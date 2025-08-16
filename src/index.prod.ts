@@ -4,6 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 import { createConnection } from 'typeorm';
 import { ServiceProvider } from './entities/ServiceProvider';
 import { serviceProviderRoutes } from './routes/serviceProviderRoutes';
+import consumerRoutes from './routes/consumerRoutes';
 import { productionConfig } from './config/production';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -54,6 +55,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // Routes
 app.use('/api', serviceProviderRoutes);
+app.use('/api', consumerRoutes);
 
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {

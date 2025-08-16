@@ -408,7 +408,7 @@ router.get('/sp-subscription-status/:id', async (req: Request, res: Response) =>
 router.post('/sp-renew-subscription/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { months = 1 } = req.body;
+    const { months = 1, screenshot } = req.body;
     
     if (!id) {
       return res.status(400).json({
@@ -417,7 +417,25 @@ router.post('/sp-renew-subscription/:id', async (req: Request, res: Response) =>
       });
     }
 
-    const renewed = await SubscriptionService.renewSubscription(parseInt(id), months);
+    // Validate screenshot is provided
+    if (!screenshot || typeof screenshot !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Screenshot is required and must be a valid URL string'
+      });
+    }
+
+    // Validate URL format
+    try {
+      new URL(screenshot);
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Screenshot must be a valid URL'
+      });
+    }
+
+    const renewed = await SubscriptionService.renewSubscription(parseInt(id), months, screenshot);
     
     if (!renewed) {
       return res.status(404).json({
@@ -503,6 +521,38 @@ router.get('/sp-pending', async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Error fetching pending service providers:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * Serve payment proof images
+ * GET /api/images/:filename
+ */
+router.get('/images/:filename', async (req: Request, res: Response) => {
+  try {
+    const { filename } = req.params;
+    
+    if (!filename) {
+      return res.status(400).json({
+        success: false,
+        message: 'Filename is required'
+      });
+    }
+
+    // For now, we'll just return a placeholder response
+    // In production, you would serve actual image files from a storage system
+    res.json({
+      success: true,
+      message: `Image ${filename} requested`,
+      note: 'This endpoint will serve actual image files in production'
+    });
+  } catch (error) {
+    console.error('Error serving image:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error',
