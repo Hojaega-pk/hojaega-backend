@@ -1,6 +1,7 @@
 import express = require('express');
 import { Request, Response, NextFunction } from 'express';
 import { serviceProviderRoutes } from './routes/serviceProviderRoutes';
+import consumerRoutes from './routes/consumerRoutes';
 import { prismaService } from './services/prisma.service';
 import { setupSwagger } from './swagger';
 const app = express();
@@ -33,6 +34,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // Routes
 app.use('/api', serviceProviderRoutes);
+app.use('/api', consumerRoutes);
 
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {
@@ -67,6 +69,9 @@ app.get('/', (req: Request, res: Response) => {
         pending: 'http://localhost:3000/api/sp-pending',
         subscriptionStatus: 'http://localhost:3000/api/sp-subscription-status/{id}',
         renewSubscription: 'http://localhost:3000/api/sp-renew-subscription/{id} (POST)'
+      },
+      consumerEndpoints: {
+        create: 'http://localhost:3000/api/consumer-create'
       }
     }
   });
@@ -83,6 +88,8 @@ async function startServer() {
       console.log(`Domain: localhost:3000 (Development)`);
       console.log(`Health check: http://localhost:3000/health`);
       console.log(`API endpoints:`);
+      console.log(`   • Documentation: http://localhost:3000/api-docs/`);
+      console.log(`   • Consumer Create: http://localhost:3000/api/consumer-create`);
       console.log(`   • Create: http://localhost:3000/api/sp-create`);
       console.log(`   • List: http://localhost:3000/api/sp-list`);
       console.log(`   • Get: http://localhost:3000/api/sp-get/{id}`);

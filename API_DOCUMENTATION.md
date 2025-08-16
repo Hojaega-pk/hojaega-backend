@@ -1,10 +1,10 @@
-# Service Provider API Documentation
+# Service Provider & Consumer API Documentation
 ## Testing the API
 
 Download Postman desktop since local host requests only work on desktop make sure to run the project in background otherwise postman won't give any response.
 
 ## Overview
-This API provides endpoints for managing service providers. It's built with Node.js, Express, and TypeORM(for now will be replaced by Prisma), using SQLite as the database(will be replace by Postgres).
+This API provides endpoints for managing service providers and consumers. It's built with Node.js, Express, and Prisma ORM, using SQLite as the database.
 
 Base URL: `http://localhost:3000` (Development for now)
 After Hojaega.pk gets deployed it will change to 'http://hojaega.pk'
@@ -31,6 +31,30 @@ All API responses follow this structure:
   "error": string
 }
 ```
+
+---
+
+## API Endpoints Summary
+
+### Service Providers
+- `POST /api/sp-create` - Create a new service provider
+- `GET /api/sp-list` - Get all service providers
+- `GET /api/sp-get/{id}` - Get service provider by ID
+- `PUT /api/sp-update/{id}` - Update service provider
+- `DELETE /api/sp-delete/{id}` - Delete service provider
+- `POST /api/sp-filter` - Filter service providers
+- `GET /api/sp-stats` - Get service provider statistics
+- `GET /api/cities` - Get unique cities
+- `GET /api/sp-pending` - Get pending service providers
+- `GET /api/sp-subscription-status/{id}` - Get subscription status
+- `POST /api/sp-renew-subscription/{id}` - Renew subscription
+
+### Consumers
+- `POST /api/consumer-create` - Create a new consumer
+
+### Health & Documentation
+- `GET /health` - Health check endpoint
+- `GET /api-docs` - API documentation (Swagger UI)
 
 ---
 
@@ -66,9 +90,10 @@ Request Body:
   "city": "string (required)",
   "skillset": "string (required)",
   "contactNo": "string (required)",
-  "email": "string (optional)",
+  "pin": "string (required)",
   "description": "string (optional)",
-  "experience": "string (optional)"
+  "experience": "string (optional)",
+  "screenshot": "string (optional)"
 }
 ```
 
@@ -79,9 +104,10 @@ Example Request:
   "city": "Karachi",
   "skillset": "Plumbing",
   "contactNo": "+92-300-1234567",
-  "email": "ahmed@example.com",
+  "pin": "5678",
   "description": "Professional plumber with 5 years experience",
-  "experience": "5 years"
+  "experience": "5 years",
+  "screenshot": "http://localhost:3000/images/payment_proof.jpg"
 }
 ```
 
@@ -96,10 +122,10 @@ Response (201 Created):
     "city": "Karachi",
     "skillset": "Plumbing",
     "contactNo": "+92-300-1234567",
-    "email": "ahmed@example.com",
+    "pin": "5678",
     "description": "Professional plumber with 5 years experience",
     "experience": "5 years",
-    "isActive": true,
+    "screenshot": "http://localhost:3000/images/payment_proof.jpg",
     "createdAt": "2024-01-15T10:30:00.000Z",
     "updatedAt": "2024-01-15T10:30:00.000Z"
   }
@@ -107,7 +133,8 @@ Response (201 Created):
 ```
 
 Validation Rules:
-- `name`, `city`, `skillset`, `contactNo` are required
+- `name`, `city`, `skillset`, `contactNo`, `pin` are required
+- `pin` must be exactly 4 digits (0-9)
 - `contactNo` must be unique among active providers
 
 ---
@@ -534,12 +561,14 @@ Path Parameters:
 Request Body:
 ```json
 {
-  "months": 3
+  "months": 3,
+  "screenshot": "http://localhost:3000/images/payment_proof_123.jpg"
 }
 ```
 
 **Request Fields**:
 - `months`: Number of months to extend subscription (default: 1 if not specified)
+- `screenshot`: Image URL for payment proof (required)
 
 Example: `POST /api/sp-renew-subscription/1`
 
@@ -556,12 +585,34 @@ Response:
 2. `subscriptionStartDate` is set to current date
 3. `subscriptionEndDate` is extended by specified months
 4. Provider becomes active again immediately
+5. Payment proof screenshot is stored for verification
+
+**Important Notes**:
+- Screenshot is **required** for subscription renewal
+- Must be a valid URL pointing to a payment proof image
+- Example format: `http://localhost:3000/api/images/payment_proof_123.jpg`
 
 **Example Renewal Scenarios**:
 - 1 month renewal: Extends by 30 days
 - 3 month renewal: Extends by 90 days
 - 6 month renewal: Extends by 180 days
 - 12 month renewal: Extends by 365 days
+
+**Error Response (400 - Missing Screenshot)**:
+```json
+{
+  "success": false,
+  "message": "Screenshot is required and must be a valid URL string"
+}
+```
+
+**Error Response (400 - Invalid URL)**:
+```json
+{
+  "success": false,
+  "message": "Screenshot must be a valid URL"
+}
+```
 
 **Error Response (404)**:
 ```json
@@ -570,6 +621,113 @@ Response:
   "message": "Service provider not found or renewal failed"
 }
 ```
+
+---
+
+### 13. Create Consumer
+POST `/api/consumer-create`
+
+Create a new consumer with name, city, and 4-digit PIN.
+
+**Purpose**: Register new consumers who can use the platform to find service providers.
+
+Request Body:
+```json
+{
+  "name": "string (required)",
+  "city": "string (required)",
+  "pin": "string (required)"
+}
+```
+
+**Request Fields**:
+- `name`: Consumer's full name (required)
+- `city`: Consumer's city (required)
+- `pin`: 4-digit PIN code (required, exactly 4 digits 0-9)
+
+Example Request:
+```json
+{
+  "name": "John Doe",
+  "city": "Karachi",
+  "pin": "1234"
+}
+```
+
+Response (201 Created):
+```json
+{
+  "success": true,
+  "message": "Consumer created successfully",
+  "data": {
+    "id": 1,
+    "name": "John Doe",
+    "city": "Karachi",
+    "pin": "1234",
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+**Validation Rules**:
+- `name`, `city`, and `pin` are required
+- `name` and `city` cannot be empty strings
+- `pin` must be exactly 4 digits (0-9)
+- Consumer with same name and city combination cannot exist
+
+**Error Response (400 - Validation Error)**:
+```json
+{
+  "error": "Name, city and pin are required",
+  "message": "Name, city and pin fields must be provided"
+}
+```
+
+**Error Response (400 - Invalid PIN)**:
+```json
+{
+  "error": "Invalid pin format",
+  "message": "Pin must be exactly 4 digits (0-9)"
+}
+```
+
+**Error Response (409 - Duplicate Consumer)**:
+```json
+{
+  "error": "Consumer already exists",
+  "message": "A consumer with this name and city already exists"
+}
+```
+
+---
+
+### 14. Serve Payment Proof Images
+GET `/api/images/{filename}`
+
+Serve payment proof images for subscription renewals.
+
+**Purpose**: Display payment proof images when viewing subscription details.
+
+Path Parameters:
+- `filename` - Image filename (e.g., payment_proof_123.jpg)
+
+Example: `GET /api/images/payment_proof_123.jpg`
+
+Response:
+```json
+{
+  "success": true,
+  "message": "Image payment_proof_123.jpg requested",
+  "note": "This endpoint will serve actual image files in production"
+}
+```
+
+**Notes**:
+- Currently returns placeholder response
+- In production, will serve actual image files
+- Images should be stored in a secure location
+- Consider implementing authentication for sensitive images
 
 ---
 
@@ -618,22 +776,35 @@ interface ServiceProvider {
   city: string;                  // City where provider operates
   skillset: string;              // Skills/expertise area
   contactNo: string;             // Phone number
-  email?: string;                // Email address (optional)
+  pin: string;                   // 4-digit PIN code
   description?: string;           // Detailed description (optional)
   experience?: string;           // Years of experience (optional)
-  isActive: boolean;             // Active status (true/false)
-  status: number;                // Subscription status (1 = active, 0 = expired)
-  subscriptionStartDate: Date;   // When subscription began
-  subscriptionEndDate: Date;     // When subscription expires
+  screenshot?: string;           // Payment proof image URL (optional)
   createdAt: Date;               // Creation timestamp
   updatedAt: Date;               // Last update timestamp
 }
 ```
 
-**New Fields Added**:
-- `status`: Subscription status indicator
-- `subscriptionStartDate`: Subscription start timestamp
-- `subscriptionEndDate`: Subscription end timestamp
+**Fields**:
+- `pin`: 4-digit PIN code for authentication
+- `screenshot`: Optional payment proof image URL
+
+### Consumer Entity
+```typescript
+interface Consumer {
+  id: number;                    // Auto-generated unique ID
+  name: string;                  // Consumer's full name
+  city: string;                  // Consumer's city
+  pin: string;                   // 4-digit PIN code
+  createdAt: Date;               // Creation timestamp
+  updatedAt: Date;               // Last update timestamp
+}
+```
+
+**Fields**:
+- `name`: Consumer's full name (required)
+- `city`: Consumer's city (required)
+- `pin`: 4-digit PIN code for authentication (required)
 
 ---
 
