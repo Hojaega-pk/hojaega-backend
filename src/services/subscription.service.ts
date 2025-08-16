@@ -50,10 +50,20 @@ export class SubscriptionService {
         data: {
           status: 1,
           subscriptionStartDate: new Date(),
-          subscriptionEndDate: newEndDate,
-          screenshot: screenshot || null
+          subscriptionEndDate: newEndDate
         }
       });
+
+      // If screenshot is provided, create a payment record
+      if (screenshot) {
+        await prismaService.getPrismaClient().serviceProviderPayment.create({
+          data: {
+            serviceProviderId: providerId,
+            amount: 0, // You might want to get this from the request
+            screenshotPath: screenshot
+          }
+        });
+      }
 
       console.log(`Subscription renewed for service provider ID: ${providerId} until ${newEndDate}`);
       return true;
@@ -69,7 +79,13 @@ export class SubscriptionService {
   static async getSubscriptionStatus(providerId: number): Promise<any> {
     try {
       const provider = await prismaService.getPrismaClient().serviceProvider.findFirst({
-        where: { id: providerId, isActive: true }
+        where: { id: providerId, isActive: true },
+        include: {
+          payments: {
+            orderBy: { createdAt: 'desc' },
+            take: 1
+          }
+        }
       });
 
       if (!provider) {
@@ -81,6 +97,10 @@ export class SubscriptionService {
       const daysUntilExpiry = provider.subscriptionEndDate ? 
         Math.ceil((provider.subscriptionEndDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
+      // Get the latest payment screenshot if available
+      const latestPayment = provider.payments[0];
+      const screenshot = latestPayment?.screenshotPath || null;
+
       return {
         providerId: provider.id,
         name: provider.name,
@@ -89,7 +109,7 @@ export class SubscriptionService {
         daysUntilExpiry: Math.max(0, daysUntilExpiry),
         subscriptionStartDate: provider.subscriptionStartDate,
         subscriptionEndDate: provider.subscriptionEndDate,
-        screenshot: provider.screenshot,
+        screenshot: screenshot,
         message: isExpired ? 
           'Subscription period ended. Please complete your payment to continue services.' :
           `Subscription active. ${daysUntilExpiry} days remaining.`

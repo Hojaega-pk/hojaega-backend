@@ -625,13 +625,46 @@ router.post('/payment-upload', upload.single('screenshot'), async (req: Request,
       }
     });
 
+    // Automatically renew subscription after payment upload
+    let subscriptionRenewed = false;
+    let renewalMessage = '';
+    
+    try {
+      const renewed = await SubscriptionService.renewSubscription(
+        parsedServiceProviderId,
+        1, // Default to 1 month renewal
+        `/screenshots/${req.file.filename}`
+      );
+      
+      if (renewed) {
+        subscriptionRenewed = true;
+        renewalMessage = 'Payment uploaded and subscription renewed successfully';
+      } else {
+        renewalMessage = 'Payment uploaded but subscription renewal failed';
+      }
+    } catch (renewalError) {
+      console.error('Error renewing subscription:', renewalError);
+      renewalMessage = 'Payment uploaded but subscription renewal failed';
+    }
+
     res.json({
-      message: 'Payment uploaded successfully',
-      payment
+      message: renewalMessage,
+      payment,
+      subscriptionRenewed,
+      details: {
+        serviceProviderId: parsedServiceProviderId,
+        amount: parsedAmount,
+        screenshotPath: `/screenshots/${req.file.filename}`
+      }
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Payment upload error details:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
