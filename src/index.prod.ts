@@ -1,18 +1,17 @@
-import 'reflect-metadata';
-import express = require('express');
+import express from 'express';
 import { Request, Response, NextFunction } from 'express';
-import { createConnection } from 'typeorm';
-import { ServiceProvider } from './entities/ServiceProvider';
 import { serviceProviderRoutes } from './routes/serviceProviderRoutes';
 import consumerRoutes from './routes/consumerRoutes';
-import { productionConfig } from './config/production';
+import { prismaService } from './services/prisma.service';
+import { setupSwagger } from './swagger';
+import path from 'path';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 
 const app = express();
-const PORT = productionConfig.port;
-const HOST = productionConfig.host;
+const PORT = process.env.PORT || 10000;
+const HOST = process.env.HOST || '0.0.0.0';
 
 // Security middleware
 app.use(helmet());
@@ -21,23 +20,45 @@ app.use(helmet());
 app.use(compression());
 
 // Rate limiting
-const limiter = rateLimit(productionConfig.security.rateLimit);
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
 app.use('/api/', limiter);
 
 // Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Enhanced CORS middleware for Hojaega.pk
+// Setup Swagger
+setupSwagger(app);
+
+// Static files for screenshots
+app.use('/screenshots', express.static(path.join(__dirname, '../screenshots')));
+
+// Ensure screenshots directory exists
+import fs from 'fs';
+const screenshotsDir = path.join(__dirname, '../screenshots');
+if (!fs.existsSync(screenshotsDir)) {
+  fs.mkdirSync(screenshotsDir, { recursive: true });
+}
+
+// Enhanced CORS middleware for production
 app.use((req: Request, res: Response, next: NextFunction) => {
+  const allowedOrigins = [
+    'https://hojaega.pk',
+    'https://www.hojaega.pk',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+  ];
   const origin = req.headers.origin;
   
-  if (origin && productionConfig.cors.origin.includes(origin)) {
+  if (origin && allowedOrigins.includes(origin)) {
     res.header('Access-Control-Allow-Origin', origin);
   }
   
-  res.header('Access-Control-Allow-Methods', productionConfig.cors.methods.join(', '));
-  res.header('Access-Control-Allow-Headers', productionConfig.cors.allowedHeaders.join(', '));
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
   
   if (req.method === 'OPTIONS') {
@@ -64,7 +85,7 @@ app.get('/health', (req: Request, res: Response) => {
     message: 'Service Provider API is running',
     timestamp: new Date().toISOString(),
     version: process.env.npm_package_version || '1.0.0',
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'production'
   });
 });
 
@@ -75,18 +96,25 @@ app.get('/', (req: Request, res: Response) => {
     domain: 'Hojaega.pk (Production)',
     version: process.env.npm_package_version || '1.0.0',
     endpoints: {
-      health: 'https://Hojaega.pk/health',
-      api: 'https://Hojaega.pk/api',
-      documentation: 'https://Hojaega.pk/api/docs',
+      health: '/health',
+      api: '/api',
+      documentation: '/api/docs',
       spEndpoints: {
-        create: 'https://Hojaega.pk/api/sp-create',
-        list: 'https://Hojaega.pk/api/sp-list',
-        get: 'https://Hojaega.pk/api/sp-get/{id}',
-        update: 'https://Hojaega.pk/api/sp-update/{id}',
-        delete: 'https://Hojaega.pk/api/sp-delete/{id}',
-        filter: 'https://Hojaega.pk/api/sp-filter (POST)',
-        stats: 'https://Hojaega.pk/api/sp-stats',
-        cities: 'https://Hojaega.pk/api/cities'
+        create: '/api/sp-create',
+        list: '/api/sp-list',
+        get: '/api/sp-get/{id}',
+        update: '/api/sp-update/{id}',
+        delete: '/api/sp-delete/{id}',
+        filter: '/api/sp-filter (POST)',
+        stats: '/api/sp-stats',
+        cities: '/api/cities',
+        pending: '/api/sp-pending',
+        subscriptionStatus: '/api/sp-subscription-status/{id}',
+        renewSubscription: '/api/sp-renew-subscription/{id} (POST)',
+        paymentUpload: '/api/payment-upload'
+      },
+      consumerEndpoints: {
+        create: '/api/consumer-create'
       }
     }
   });
@@ -112,39 +140,34 @@ app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
 });
 
 // Database connection and server startup
-createConnection(productionConfig.database)
-  .then(() => {
-    console.log('✅ Database connected successfully');
+async function startServer() {
+  try {
+    await prismaService.connect();
     
     app.listen(Number(PORT), String(HOST), () => {
-      console.log('Service Provider API is running!');
+      console.log('✅ Service Provider API is running!');
       console.log(`Server: http://${HOST}:${PORT}`);
-      console.log(`Domain: Hojaega.pk`);
-      console.log(`Health check: https://Hojaega.pk/health`);
-      console.log(`API endpoints:`);
-      console.log(`   • Create: https://Hojaega.pk/api/sp-create`);
-      console.log(`   • List: https://Hojaega.pk/api/sp-list`);
-      console.log(`   • Get: https://Hojaega.pk/api/sp-get/{id}`);
-      console.log(`   • Update: https://Hojaega.pk/api/sp-update/{id}`);
-      console.log(`   • Delete: https://Hojaega.pk/api/sp-delete/{id}`);
-      console.log(`   • Filter: https://Hojaega.pk/api/sp-filter (POST)`);
-      console.log(`   • Stats: https://Hojaega.pk/api/sp-stats`);
-      console.log(`   • Cities: https://Hojaega.pk/api/cities`);
       console.log(`Environment: ${process.env.NODE_ENV || 'production'}`);
+      console.log(`Health check: /health`);
+      console.log(`API endpoints: /api`);
     });
-  })
-  .catch((error) => {
-    console.error('Database connection failed:', error);
+  } catch (error: any) {
+    console.error('❌ Database connection failed:', error);
     process.exit(1);
-  });
+  }
+}
+
+startServer();
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down gracefully');
+  await prismaService.disconnect();
   process.exit(0);
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('SIGINT received, shutting down gracefully');
+  await prismaService.disconnect();
   process.exit(0);
 });
