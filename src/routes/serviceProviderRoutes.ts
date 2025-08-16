@@ -2,6 +2,31 @@ import { Router, Request, Response } from 'express';
 import { validateServiceProvider } from '../middleware/validation';
 import { prismaService } from '../services/prisma.service';
 import { SubscriptionService } from '../services/subscription.service';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+
+// Ensure screenshots folder exists
+const uploadDir = path.join(__dirname, '../../screenshots');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Multer config
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, uniqueName + path.extname(file.originalname));
+  }
+});
+const upload = multer({
+  storage,
+  fileFilter: imageFilter,
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 
 
 interface ServiceProviderRequestBody {
@@ -558,6 +583,49 @@ router.get('/images/:filename', async (req: Request, res: Response) => {
       message: 'Internal server error',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
+  }
+});
+
+
+router.post('/payment-upload', upload.single('screenshot'), async (req: Request, res: Response) => {
+  try {
+    const { serviceId, amount } = req.body;
+    if (!req.file) {
+      return res.status(400).json({ error: 'Screenshot is required' });
+    }
+
+    const payment = await prismaService.serviceProviderPayment.create({
+      data: {
+        serviceId: Number(serviceId),
+    // Validate serviceId and amount
+    const parsedServiceId = Number(serviceId);
+    const parsedAmount = Number(amount);
+    if (
+      !serviceId ||
+      isNaN(parsedServiceId) ||
+      parsedServiceId <= 0 ||
+      !amount ||
+      isNaN(parsedAmount) ||
+      parsedAmount <= 0
+    ) {
+      return res.status(400).json({ error: 'serviceId and amount must be valid positive numbers' });
+    }
+
+    const payment = await prisma.serviceProviderPayment.create({
+      data: {
+        serviceId: parsedServiceId,
+        amount: parsedAmount,
+        screenshot: `/screenshots/${req.file.filename}`
+      }
+    });
+
+    res.json({
+      message: 'Payment uploaded successfully',
+      payment
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

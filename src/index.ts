@@ -4,6 +4,8 @@ import { serviceProviderRoutes } from './routes/serviceProviderRoutes';
 import consumerRoutes from './routes/consumerRoutes';
 import { prismaService } from './services/prisma.service';
 import { setupSwagger } from './swagger';
+import path from 'path';
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -11,6 +13,8 @@ const HOST = process.env.HOST || '0.0.0.0';
 setupSwagger(app);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/screenshots', express.static(path.join(__dirname, '../screenshots')));
+
 
 // CORS middleware for localhost (will be updated to Hojaega.pk when deployed)
 app.use((req: Request, res: Response, next: NextFunction) => {
