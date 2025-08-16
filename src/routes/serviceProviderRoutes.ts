@@ -22,7 +22,11 @@ const storage = multer.diskStorage({
     cb(null, uniqueName + path.extname(file.originalname));
   }
 });
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  fileFilter: imageFilter,
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 
 
 interface ServiceProviderRequestBody {
