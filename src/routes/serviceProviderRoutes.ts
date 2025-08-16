@@ -593,7 +593,24 @@ router.post('/payment-upload', upload.single('screenshot'), async (req: Request,
     const payment = await prismaService.serviceProviderPayment.create({
       data: {
         serviceId: Number(serviceId),
-        amount: Number(amount),
+    // Validate serviceId and amount
+    const parsedServiceId = Number(serviceId);
+    const parsedAmount = Number(amount);
+    if (
+      !serviceId ||
+      isNaN(parsedServiceId) ||
+      parsedServiceId <= 0 ||
+      !amount ||
+      isNaN(parsedAmount) ||
+      parsedAmount <= 0
+    ) {
+      return res.status(400).json({ error: 'serviceId and amount must be valid positive numbers' });
+    }
+
+    const payment = await prisma.serviceProviderPayment.create({
+      data: {
+        serviceId: parsedServiceId,
+        amount: parsedAmount,
         screenshot: `/screenshots/${req.file.filename}`
       }
     });
