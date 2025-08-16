@@ -15,7 +15,8 @@
     "db:migrate": "npx prisma migrate dev",
     "db:generate": "npx prisma generate",
     "db:studio": "npx prisma studio",
-    "db:deploy": "npx prisma migrate deploy"
+    "db:deploy": "npx prisma migrate deploy",
+    "render:build": "npm install && npm run build && npx prisma generate"
   },
   "keywords": [
     "service-provider",
