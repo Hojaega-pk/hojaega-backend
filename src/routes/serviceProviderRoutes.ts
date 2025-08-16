@@ -590,7 +590,7 @@ router.post('/payment-upload', upload.single('screenshot'), async (req: Request,
       return res.status(400).json({ error: 'Screenshot is required' });
     }
 
-    const payment = await prisma.serviceProviderPayment.create({
+    const payment = await prismaService.serviceProviderPayment.create({
       data: {
         serviceId: Number(serviceId),
         amount: Number(amount),
