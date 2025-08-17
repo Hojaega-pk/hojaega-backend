@@ -7,7 +7,7 @@ export interface ValidationError {
 
 export const validateServiceProvider = (req: Request, res: Response, next: NextFunction) => {
   const errors: ValidationError[] = [];
-  const { name, city, skillset, contactNo } = req.body;
+  const { name, city, skillset, contactNo, pin } = req.body;
 
   // Name validation
   if (!name || typeof name !== 'string') {
@@ -45,7 +45,14 @@ export const validateServiceProvider = (req: Request, res: Response, next: NextF
     }
   }
 
-
+  // PIN validation (optional but if provided, must be exactly 6 digits)
+  if (pin !== undefined && pin !== null) {
+    if (typeof pin !== 'string') {
+      errors.push({ field: 'pin', message: 'PIN must be a string' });
+    } else if (!/^[0-9]{6}$/.test(pin)) {
+      errors.push({ field: 'pin', message: 'PIN must be exactly 6 digits (0-9)' });
+    }
+  }
 
   if (errors.length > 0) {
     return res.status(400).json({

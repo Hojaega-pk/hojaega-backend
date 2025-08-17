@@ -1,6 +1,7 @@
 import express from 'express';
 import { Request, Response, NextFunction } from 'express';
 import { serviceProviderRoutes } from './routes/serviceProviderRoutes';
+import { serviceProviderSigninRoutes } from './routes/serviceProviderSignin';
 import consumerRoutes from './routes/consumerRoutes';
 import { prismaService } from './services/prisma.service';
 import { setupSwagger } from './swagger';
@@ -15,6 +16,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/screenshots', express.static(path.join(__dirname, '../screenshots')));
 app.use('/api', serviceProviderRoutes);
+app.use('/api', serviceProviderSigninRoutes);
 app.use('/api', consumerRoutes);
 
 // CORS middleware for localhost (will be updated to Hojaega.pk when deployed)
@@ -69,10 +71,12 @@ app.get('/', (req: Request, res: Response) => {
         cities: 'http://localhost:3000/api/cities',
         pending: 'http://localhost:3000/api/sp-pending',
         subscriptionStatus: 'http://localhost:3000/api/sp-subscription-status/{id}',
-        renewSubscription: 'http://localhost:3000/api/sp-renew-subscription/{id} (POST)'
+        renewSubscription: 'http://localhost:3000/api/sp-renew-subscription/{id} (POST)',
+        signin: 'http://localhost:3000/api/sp-signin'
       },
       consumerEndpoints: {
-        create: 'http://localhost:3000/api/consumer-create'
+        create: 'http://localhost:3000/api/consumer-create',
+        signin: 'http://localhost:3000/api/consumer-signin'
       }
     }
   });

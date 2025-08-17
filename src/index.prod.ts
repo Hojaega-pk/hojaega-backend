@@ -1,6 +1,7 @@
 import express from 'express';
 import { Request, Response, NextFunction } from 'express';
 import { serviceProviderRoutes } from './routes/serviceProviderRoutes';
+import { serviceProviderSigninRoutes } from './routes/serviceProviderSignin';
 import consumerRoutes from './routes/consumerRoutes';
 import { prismaService } from './services/prisma.service';
 import { setupSwagger } from './swagger';
@@ -76,6 +77,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // Routes
 app.use('/api', serviceProviderRoutes);
+app.use('/api', serviceProviderSigninRoutes);
 app.use('/api', consumerRoutes);
 
 // Health check endpoint
@@ -111,11 +113,13 @@ app.get('/', (req: Request, res: Response) => {
         pending: '/api/sp-pending',
         subscriptionStatus: '/api/sp-subscription-status/{id}',
         renewSubscription: '/api/sp-renew-subscription/{id} (POST)',
-        paymentUpload: '/api/payment-upload'
+        paymentUpload: '/api/payment-upload',
+        signin: '/api/sp-signin'
       },
-      consumerEndpoints: {
-        create: '/api/consumer-create'
-      }
+             consumerEndpoints: {
+         create: '/api/consumer-create',
+         signin: '/api/consumer-signin'
+       }
     }
   });
 });
