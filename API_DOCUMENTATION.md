@@ -48,9 +48,11 @@ All API responses follow this structure:
 - `GET /api/sp-pending` - Get pending service providers
 - `GET /api/sp-subscription-status/{id}` - Get subscription status
 - `POST /api/sp-renew-subscription/{id}` - Renew subscription
+- `POST /api/sp-signin` - Sign in service provider with PIN
 
 ### Consumers
 - `POST /api/consumer-create` - Create a new consumer
+- `POST /api/consumer-signin` - Sign in consumer with PIN
 
 ### Health & Documentation
 - `GET /health` - Health check endpoint
@@ -104,7 +106,7 @@ Example Request:
   "city": "Karachi",
   "skillset": "Plumbing",
   "contactNo": "+92-300-1234567",
-  "pin": "5678",
+  "pin": "567890",
   "description": "Professional plumber with 5 years experience",
   "experience": "5 years",
   "screenshot": "http://localhost:3000/images/payment_proof.jpg"
@@ -122,7 +124,7 @@ Response (201 Created):
     "city": "Karachi",
     "skillset": "Plumbing",
     "contactNo": "+92-300-1234567",
-    "pin": "5678",
+    "pin": "567890",
     "description": "Professional plumber with 5 years experience",
     "experience": "5 years",
     "screenshot": "http://localhost:3000/images/payment_proof.jpg",
@@ -134,7 +136,7 @@ Response (201 Created):
 
 Validation Rules:
 - `name`, `city`, `skillset`, `contactNo`, `pin` are required
-- `pin` must be exactly 4 digits (0-9)
+- `pin` must be exactly 6 digits (0-9)
 - `contactNo` must be unique among active providers
 
 ---
@@ -627,7 +629,7 @@ Response:
 ### 13. Create Consumer
 POST `/api/consumer-create`
 
-Create a new consumer with name, city, and 4-digit PIN.
+Create a new consumer with name, city, and 6-digit PIN.
 
 **Purpose**: Register new consumers who can use the platform to find service providers.
 
@@ -643,14 +645,14 @@ Request Body:
 **Request Fields**:
 - `name`: Consumer's full name (required)
 - `city`: Consumer's city (required)
-- `pin`: 4-digit PIN code (required, exactly 4 digits 0-9)
+- `pin`: 6-digit PIN code (required, exactly 6 digits 0-9)
 
 Example Request:
 ```json
 {
   "name": "John Doe",
   "city": "Karachi",
-  "pin": "1234"
+      "pin": "123456"
 }
 ```
 
@@ -663,7 +665,7 @@ Response (201 Created):
     "id": 1,
     "name": "John Doe",
     "city": "Karachi",
-    "pin": "1234",
+    "pin": "123456",
     "createdAt": "2024-01-15T10:30:00.000Z",
     "updatedAt": "2024-01-15T10:30:00.000Z"
   }
@@ -699,6 +701,168 @@ Response (201 Created):
   "message": "A consumer with this name and city already exists"
 }
 ```
+
+---
+
+### 14. Service Provider Sign In
+POST `/api/sp-signin`
+
+Sign in an existing service provider using their 6-digit PIN.
+
+**Purpose**: Authenticate service providers to access their account information and services.
+
+Request Body:
+```json
+{
+  "pin": "string (required)"
+}
+```
+
+**Request Fields**:
+- `pin`: 6-digit PIN code (required, exactly 6 digits 0-9)
+
+Example Request:
+```json
+{
+  "pin": "123456"
+}
+```
+
+Response (200 OK):
+```json
+{
+  "success": true,
+  "message": "Service provider signed in successfully",
+  "data": {
+    "id": 1,
+    "name": "Ahmed Khan",
+    "city": "Karachi",
+    "skillset": "Plumbing",
+    "contactNo": "+92-300-1234567",
+    "description": "Professional plumber with 5 years experience",
+    "experience": "5 years",
+    "isActive": true,
+    "status": 1,
+    "subscriptionStartDate": "2024-01-01T00:00:00.000Z",
+    "subscriptionEndDate": "2024-02-01T00:00:00.000Z",
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+**Validation Rules**:
+- `pin` is required
+- `pin` must be exactly 6 digits (0-9)
+- PIN must match an existing active service provider record
+- Only active service providers (`isActive: true`) can sign in
+
+**Error Response (400 - Validation Error)**:
+```json
+{
+  "error": "PIN is required",
+  "message": "PIN field must be provided"
+}
+```
+
+**Error Response (400 - Invalid PIN)**:
+```json
+{
+  "error": "Invalid pin format",
+  "message": "PIN must be exactly 6 digits (0-9)"
+}
+```
+
+**Error Response (401 - Invalid Credentials)**:
+```json
+{
+  "error": "Invalid credentials",
+  "message": "PIN is incorrect or no active service provider found with this PIN"
+}
+```
+
+**Use Cases**:
+- Service provider authentication before accessing services
+- Account verification
+- Session management
+- Security validation
+
+---
+
+### 15. Consumer Sign In
+POST `/api/consumer-signin`
+
+Sign in an existing consumer using their 6-digit PIN.
+
+**Purpose**: Authenticate consumers to access their account information and services.
+
+Request Body:
+```json
+{
+  "pin": "string (required)"
+}
+```
+
+**Request Fields**:
+- `pin`: 6-digit PIN code (required, exactly 6 digits 0-9)
+
+Example Request:
+```json
+{
+  "pin": "123456"
+}
+```
+
+Response (200 OK):
+```json
+{
+  "success": true,
+  "message": "Consumer signed in successfully",
+  "data": {
+    "id": 1,
+    "name": "John Doe",
+    "city": "Karachi",
+    "pin": "123456",
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+**Validation Rules**:
+- `pin` is required
+- `pin` must be exactly 6 digits (0-9)
+- PIN must match an existing consumer record
+
+**Error Response (400 - Validation Error)**:
+```json
+{
+  "error": "PIN is required",
+  "message": "PIN field must be provided"
+}
+```
+
+**Error Response (400 - Invalid PIN)**:
+```json
+{
+  "error": "Invalid pin format",
+  "message": "PIN must be exactly 6 digits (0-9)"
+}
+```
+
+**Error Response (401 - Invalid Credentials)**:
+```json
+{
+  "error": "Invalid credentials",
+  "message": "Name, city, or PIN is incorrect"
+}
+```
+
+**Use Cases**:
+- Consumer authentication before accessing services
+- Account verification
+- Session management
+- Security validation
 
 ---
 
@@ -776,7 +940,7 @@ interface ServiceProvider {
   city: string;                  // City where provider operates
   skillset: string;              // Skills/expertise area
   contactNo: string;             // Phone number
-  pin: string;                   // 4-digit PIN code
+  pin: string;                   // 6-digit PIN code
   description?: string;           // Detailed description (optional)
   experience?: string;           // Years of experience (optional)
   screenshot?: string;           // Payment proof image URL (optional)
@@ -786,7 +950,7 @@ interface ServiceProvider {
 ```
 
 **Fields**:
-- `pin`: 4-digit PIN code for authentication
+- `pin`: 6-digit PIN code for authentication
 - `screenshot`: Optional payment proof image URL
 
 ### Consumer Entity
@@ -795,7 +959,7 @@ interface Consumer {
   id: number;                    // Auto-generated unique ID
   name: string;                  // Consumer's full name
   city: string;                  // Consumer's city
-  pin: string;                   // 4-digit PIN code
+  pin: string;                   // 6-digit PIN code
   createdAt: Date;               // Creation timestamp
   updatedAt: Date;               // Last update timestamp
 }
@@ -804,7 +968,7 @@ interface Consumer {
 **Fields**:
 - `name`: Consumer's full name (required)
 - `city`: Consumer's city (required)
-- `pin`: 4-digit PIN code for authentication (required)
+- `pin`: 6-digit PIN code for authentication (required)
 
 ---
 

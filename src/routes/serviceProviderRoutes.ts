@@ -45,6 +45,7 @@ interface ServiceProviderRequestBody {
   city: string;
   skillset: string;
   contactNo: string;
+  pin?: string;
   description?: string;
   experience?: string;
 }
@@ -130,7 +131,7 @@ router.get('/sp-get/:id', async (req: Request, res: Response) => {
 
 router.post('/sp-create', validateServiceProvider, async (req: TypedRequest, res: Response) => {
   try {
-    const { name, city, skillset, contactNo, description, experience } = req.body;
+    const { name, city, skillset, contactNo, pin, description, experience } = req.body;
 
     // Check if service provider already exists
     const existingProvider = await prismaService.getPrismaClient().serviceProvider.findFirst({
@@ -157,6 +158,7 @@ router.post('/sp-create', validateServiceProvider, async (req: TypedRequest, res
         city,
         skillset,
         contactNo,
+        pin: pin || null,
         description: description || null,
         experience: experience || null,
         isActive: true,
@@ -185,7 +187,7 @@ router.post('/sp-create', validateServiceProvider, async (req: TypedRequest, res
 router.put('/sp-update/:id', validateServiceProvider, async (req: TypedRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, city, skillset, contactNo, description, experience } = req.body;
+    const { name, city, skillset, contactNo, pin, description, experience } = req.body;
 
     if (!id) {
       return res.status(400).json({
@@ -228,6 +230,7 @@ router.put('/sp-update/:id', validateServiceProvider, async (req: TypedRequest, 
         city,
         skillset,
         contactNo,
+        pin: pin !== undefined ? pin : null,
         description: description || null,
         experience: experience || null
       }

@@ -27,7 +27,7 @@
 
 ### Features
 - **Service Provider Management**: Create, read, update, delete, and filter service providers
-- **Consumer Management**: Create consumers with name, city, and PIN validation
+- **Consumer Management**: Create consumers with name, city, and 6-digit PIN validation
 - **Subscription Management**: Handle service provider subscriptions and renewals
 - **Database**: SQLite with Prisma ORM for type-safe database operations
 - **API Documentation**: Swagger/OpenAPI 3.0 specification
@@ -63,6 +63,7 @@ $ npm install
 
 ### Consumers
 - `POST /api/consumer-create` - Create a new consumer
+- `POST /api/consumer-signin` - Sign in consumer with PIN
 
 ### Health & Documentation
 - `GET /health` - Health check endpoint

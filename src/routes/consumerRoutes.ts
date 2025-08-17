@@ -34,11 +34,11 @@ router.post('/consumer-create', async (req, res) => {
       });
     }
 
-    // Validate pin format (exactly 4 digits)
-    if (!/^[0-9]{4}$/.test(pin)) {
+    // Validate pin format (exactly 6 digits)
+    if (!/^[0-9]{6}$/.test(pin)) {
       return res.status(400).json({ 
         error: 'Invalid pin format',
-        message: 'Pin must be exactly 4 digits (0-9)'
+        message: 'Pin must be exactly 6 digits (0-9)'
       });
     }
 
@@ -86,6 +86,80 @@ router.post('/consumer-create', async (req, res) => {
     res.status(500).json({ 
       error: 'Internal server error',
       message: 'Failed to create consumer. Please try again later.'
+    });
+  }
+});
+
+// Sign in consumer
+router.post('/consumer-signin', async (req, res) => {
+  try {
+    console.log('Sign-in request received:', {
+      body: req.body,
+      headers: req.headers['content-type'],
+      timestamp: new Date().toISOString()
+    });
+    
+    const { pin } = req.body;
+
+    // Validate required fields
+    if (!pin) {
+      return res.status(400).json({ 
+        error: 'PIN is required',
+        message: 'PIN field must be provided'
+      });
+    }
+
+    // Validate pin format (exactly 6 digits) - convert to string first
+    const pinString = String(pin);
+    if (!/^[0-9]{6}$/.test(pinString)) {
+      return res.status(400).json({ 
+        error: 'Invalid pin format',
+        message: 'PIN must be exactly 6 digits (0-9)'
+      });
+    }
+
+    // Find consumer with matching PIN (convert to string to handle both string and number inputs)
+    const consumer = await prisma.consumer.findFirst({
+      where: {
+        pin: String(pin)
+      }
+    });
+
+    if (!consumer) {
+      return res.status(401).json({ 
+        error: 'Invalid credentials',
+        message: 'PIN is incorrect or no consumer found with this PIN'
+      });
+    }
+
+    // Successfully signed in
+    const response: ConsumerResponse = {
+      id: consumer.id,
+      name: consumer.name,
+      city: consumer.city,
+      pin: consumer.pin,
+      createdAt: consumer.createdAt,
+      updatedAt: consumer.updatedAt
+    };
+
+    res.json({
+      success: true,
+      message: 'Consumer signed in successfully',
+      data: response
+    });
+
+  } catch (error) {
+    console.error('Error signing in consumer:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      requestBody: req.body,
+      timestamp: new Date().toISOString()
+    });
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: 'Failed to sign in consumer. Please try again later.',
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
