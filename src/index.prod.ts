@@ -11,7 +11,7 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 
 const app = express();
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 
 // Security middleware

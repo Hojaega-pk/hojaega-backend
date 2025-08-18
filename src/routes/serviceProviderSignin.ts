@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import bcrypt from 'bcrypt';
 import { prismaService } from '../services/prisma.service';
 
 const router = Router();
@@ -16,35 +17,35 @@ router.post('/sp-signin', async (req: Request, res: Response) => {
       });
     }
 
-    // Validate pin format (exactly 6 digits) - convert to string first
+    // Validate pin format (exactly 4 digits) - convert to string first
     const pinString = String(pin);
-    if (!/^[0-9]{6}$/.test(pinString)) {
+    if (!/^[0-9]{4}$/.test(pinString)) {
       return res.status(400).json({ 
         error: 'Invalid pin format',
-        message: 'PIN must be exactly 6 digits (0-9)'
+        message: 'PIN must be exactly 4 digits (0-9)'
       });
     }
 
-    // Find service provider with matching PIN
+    // Find service provider by contactNo or other identifier (if needed, adjust query)
     const serviceProvider = await prismaService.getPrismaClient().serviceProvider.findFirst({
       where: {
-        pin: String(pin),
-        isActive: true // Only allow active service providers to sign in
+        isActive: true
       }
     });
 
-    if (!serviceProvider) {
+    if (!serviceProvider || !serviceProvider.pin) {
       return res.status(401).json({ 
         error: 'Invalid credentials',
         message: 'PIN is incorrect or no active service provider found with this PIN'
       });
     }
 
-    // Check if service provider has a PIN set
-    if (!serviceProvider.pin) {
+    // Compare hashed PIN
+    const isMatch = await bcrypt.compare(pinString, serviceProvider.pin);
+    if (!isMatch) {
       return res.status(401).json({ 
-        error: 'PIN not configured',
-        message: 'This service provider does not have a PIN configured. Please contact support.'
+        error: 'Invalid credentials',
+        message: 'PIN is incorrect or no active service provider found with this PIN'
       });
     }
 

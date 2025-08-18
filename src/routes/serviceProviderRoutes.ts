@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import bcrypt from 'bcrypt';
 import { validateServiceProvider } from '../middleware/validation';
 import { prismaService } from '../services/prisma.service';
 import { SubscriptionService } from '../services/subscription.service';
@@ -45,7 +46,7 @@ interface ServiceProviderRequestBody {
   city: string;
   skillset: string;
   contactNo: string;
-  pin?: string;
+  pin?: string; // plain pin from frontend, will be hashed
   description?: string;
   experience?: string;
 }
@@ -133,6 +134,14 @@ router.post('/sp-create', validateServiceProvider, async (req: TypedRequest, res
   try {
     const { name, city, skillset, contactNo, pin, description, experience } = req.body;
 
+    // Validate 4-digit PIN
+    if (pin && !/^[0-9]{4}$/.test(pin)) {
+      return res.status(400).json({
+        success: false,
+        message: 'PIN must be exactly 4 digits (0-9)'
+      });
+    }
+
     // Check if service provider already exists
     const existingProvider = await prismaService.getPrismaClient().serviceProvider.findFirst({
       where: {
@@ -152,13 +161,20 @@ router.post('/sp-create', validateServiceProvider, async (req: TypedRequest, res
     const subscriptionEndDate = new Date();
     subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1); // Add 1 month
 
+    // Hash the PIN if provided
+    let hashedPin: string | null = null;
+    if (pin) {
+      const saltRounds = 10;
+      hashedPin = await bcrypt.hash(pin, saltRounds);
+    }
+
     const serviceProvider = await prismaService.getPrismaClient().serviceProvider.create({
       data: {
         name,
         city,
         skillset,
         contactNo,
-        pin: pin || null,
+        pin: hashedPin || null,
         description: description || null,
         experience: experience || null,
         isActive: true,
@@ -188,6 +204,14 @@ router.put('/sp-update/:id', validateServiceProvider, async (req: TypedRequest, 
   try {
     const { id } = req.params;
     const { name, city, skillset, contactNo, pin, description, experience } = req.body;
+
+    // Validate 4-digit PIN
+    if (pin && !/^[0-9]{4}$/.test(pin)) {
+      return res.status(400).json({
+        success: false,
+        message: 'PIN must be exactly 4 digits (0-9)'
+      });
+    }
 
     if (!id) {
       return res.status(400).json({
@@ -223,6 +247,13 @@ router.put('/sp-update/:id', validateServiceProvider, async (req: TypedRequest, 
       });
     }
 
+    // Hash the PIN if provided
+    let hashedPin: string | null = null;
+    if (pin) {
+      const saltRounds = 10;
+      hashedPin = await bcrypt.hash(pin, saltRounds);
+    }
+
     const updatedProvider = await prismaService.getPrismaClient().serviceProvider.update({
       where: { id: parseInt(id) },
       data: {
@@ -230,7 +261,7 @@ router.put('/sp-update/:id', validateServiceProvider, async (req: TypedRequest, 
         city,
         skillset,
         contactNo,
-        pin: pin !== undefined ? pin : null,
+  ...(hashedPin !== null ? { pin: hashedPin } : {}),
         description: description || null,
         experience: experience || null
       }

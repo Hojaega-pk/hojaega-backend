@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./service_providers.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model ServiceProvider {
@@ -13,7 +13,7 @@ model ServiceProvider {
   city                  String
   skillset              String
   contactNo             String
-  pin                   String?                   // 6-digit PIN for authentication (optional initially)
+  pin                   String?                   // Stores hashed PIN for authentication
   description           String?
   experience            String?
   isActive              Boolean                   @default(true)
