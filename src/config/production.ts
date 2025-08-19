@@ -5,7 +5,7 @@ export const productionConfig = {
   
   // Database configuration
   database: {
-    type: 'sqlite' as const,
+    type: 'postgresql' as const,
     database: process.env.DATABASE_PATH || 'service_providers.db',
     entities: [__dirname + '/../entities/*.js'],
     synchronize: false, // Disable auto-sync in production

@@ -45,12 +45,12 @@ export const validateServiceProvider = (req: Request, res: Response, next: NextF
     }
   }
 
-  // PIN validation (optional but if provided, must be exactly 6 digits)
+  // PIN validation (optional but if provided, must be exactly 4 digits)
   if (pin !== undefined && pin !== null) {
     if (typeof pin !== 'string') {
       errors.push({ field: 'pin', message: 'PIN must be a string' });
-    } else if (!/^[0-9]{6}$/.test(pin)) {
-      errors.push({ field: 'pin', message: 'PIN must be exactly 6 digits (0-9)' });
+    } else if (!/^[0-9]{4}$/.test(pin)) {
+      errors.push({ field: 'pin', message: 'PIN must be exactly 4 digits (0-9)' });
     }
   }
 
