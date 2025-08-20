@@ -53,3 +53,23 @@ model Consumer {
 
   @@map("consumers")
 }
+
+enum OtpPurpose {
+  SP_SIGNIN
+  CONSUMER_SIGNIN
+  GENERIC
+}
+
+model OtpCode {
+  id         Int         @id @default(autoincrement())
+  contactNo  String
+  purpose    OtpPurpose
+  codeHash   String
+  expiresAt  DateTime
+  createdAt  DateTime    @default(now())
+  consumedAt DateTime?
+  attempts   Int         @default(0)
+
+  @@index([contactNo, purpose, expiresAt])
+  @@map("otp_codes")
+}

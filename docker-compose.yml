@@ -5,7 +5,7 @@ services:
     image: postgres:15-alpine
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: hojaega
+      POSTGRES_PASSWORD: omsdemo
       POSTGRES_DB: hojaega_db
     ports:
       - "5432:5432"
@@ -18,7 +18,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgres://postgres:hojaega@db:5432/hojaega_db
+      DATABASE_URL: postgres://postgres:omsdemo@db:5432/hojaega_db
     volumes:
       - ./screenshots:/app/screenshots
     depends_on:
@@ -33,12 +33,14 @@ services:
     ports:
       - "5555:5555" # Prisma Studio port
     command: npx prisma studio
+    environment:
+      DATABASE_URL: postgres://postgres:omsdemo@db:5432/hojaega_db
     depends_on:
       - backend
 
   ngrok:
     image: ngrok/ngrok
-    command: http 3000
+    command: ["http", "http://backend:3000"]
     environment:
       - NGROK_AUTHTOKEN=31NFxVfBSZejMQa53FeY3DaIHzz_5yJFm8YWMNxaLdycsyK95
     ports:

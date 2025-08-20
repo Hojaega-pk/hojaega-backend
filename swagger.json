@@ -19,6 +19,10 @@
     {
       "name": "Consumers",
       "description": "Operations related to consumers"
+    },
+    {
+      "name": "OTP",
+      "description": "Request and verify one-time passwords"
     }
   ],
   "paths": {
@@ -264,7 +268,7 @@
     "/api/sp-signin": {
       "post": {
         "summary": "Sign in service provider",
-        "description": "Authenticate service provider using 6-digit PIN",
+        "description": "Authenticate service provider using 4-digit PIN",
         "tags": ["Service Providers"],
         "requestBody": {
           "required": true,
@@ -275,11 +279,11 @@
                 "properties": {
                   "pin": { 
                     "type": "string", 
-                    "description": "6-digit PIN code",
-                    "pattern": "^[0-9]{6}$",
-                    "minLength": 6,
-                    "maxLength": 6,
-                    "example": "123456"
+                    "description": "4-digit PIN code",
+                    "pattern": "^[0-9]{4}$",
+                    "minLength": 4,
+                    "maxLength": 4,
+                    "example": "1234"
                   }
                 },
                 "required": ["pin"]
@@ -376,6 +380,89 @@
           "500": {
             "description": "Internal server error"
           }
+        }
+      }
+    },
+    "/api/otp/request": {
+      "post": {
+        "summary": "Request an OTP code",
+        "tags": ["OTP"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OtpRequest"
+              },
+              "examples": {
+                "spSignin": {
+                  "summary": "OTP for SP sign-in",
+                  "value": {
+                    "contactNo": "922003753912",
+                    "purpose": "SP_SIGNIN",
+                    "length": 6,
+                    "ttlSeconds": 300
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OTP generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OtpGeneratedResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No account found with this contact number (for SP_SIGNIN)"
+          },
+          "409": {
+            "description": "Account with this contact number already exists (for non-SP_SIGNIN)"
+          },
+          "400": { "description": "Validation error" },
+          "500": { "description": "Internal server error" }
+        }
+      }
+    },
+    "/api/otp/verify": {
+      "post": {
+        "summary": "Verify an OTP code",
+        "tags": ["OTP"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OtpVerify"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP verified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "No active OTP found" },
+          "400": { "description": "OTP expired or missing fields" },
+          "401": { "description": "Invalid OTP" },
+          "500": { "description": "Internal server error" }
         }
       }
     },
@@ -567,10 +654,10 @@
           "screenshot": { "type": "string", "description": "Image URL for payment proof" },
           "pin": { 
             "type": "string", 
-            "description": "6-digit PIN code",
-            "pattern": "^[0-9]{6}$",
-            "minLength": 6,
-            "maxLength": 6
+            "description": "4-digit PIN code",
+            "pattern": "^[0-9]{4}$",
+            "minLength": 4,
+            "maxLength": 4
           }
         },
         "required": ["name", "city", "skillset", "contactNo", "pin"]
@@ -731,6 +818,47 @@
             "format": "date-time",
             "description": "Last update timestamp",
             "example": "2024-01-15T10:30:00Z"
+          }
+        }
+      },
+      "OtpPurpose": {
+        "type": "string",
+        "enum": ["SP_SIGNIN", "CONSUMER_SIGNIN", "GENERIC"],
+        "description": "Purpose for the OTP request"
+      },
+      "OtpRequest": {
+        "type": "object",
+        "properties": {
+          "contactNo": { "type": "string", "description": "Contact number", "example": "922003753912" },
+          "purpose": { "$ref": "#/components/schemas/OtpPurpose" },
+          "length": { "type": "integer", "minimum": 4, "maximum": 8, "example": 6 },
+          "ttlSeconds": { "type": "integer", "minimum": 60, "maximum": 900, "example": 300 }
+        },
+        "required": ["contactNo"]
+      },
+      "OtpVerify": {
+        "type": "object",
+        "properties": {
+          "contactNo": { "type": "string", "description": "Contact number", "example": "922003753912" },
+          "purpose": { "$ref": "#/components/schemas/OtpPurpose" },
+          "code": { "type": "string", "description": "Numeric OTP code", "example": "123456" }
+        },
+        "required": ["contactNo", "code"]
+      },
+      "OtpGeneratedResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "message": { "type": "string", "example": "OTP generated" },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer", "example": 123 },
+              "contactNo": { "type": "string", "example": "922003753912" },
+              "purpose": { "$ref": "#/components/schemas/OtpPurpose" },
+              "expiresAt": { "type": "string", "format": "date-time" },
+              "code": { "type": "string", "nullable": true, "description": "Returned only in non-production environments" }
+            }
           }
         }
       }

@@ -2,6 +2,7 @@ import express from 'express';
 import { Request, Response, NextFunction } from 'express';
 import { serviceProviderRoutes } from './routes/serviceProviderRoutes';
 import { serviceProviderSigninRoutes } from './routes/serviceProviderSignin';
+import { otpRoutes } from './routes/otpRoutes';
 import consumerRoutes from './routes/consumerRoutes';
 import { prismaService } from './services/prisma.service';
 import { setupSwagger } from './swagger';
@@ -18,6 +19,7 @@ app.use('/screenshots', express.static(path.join(__dirname, '../screenshots')));
 app.use('/api', serviceProviderRoutes);
 app.use('/api', serviceProviderSigninRoutes);
 app.use('/api', consumerRoutes);
+app.use('/api', otpRoutes);
 
 // CORS middleware for localhost (will be updated to Hojaega.pk when deployed)
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -77,6 +79,10 @@ app.get('/', (req: Request, res: Response) => {
       consumerEndpoints: {
         create: 'http://localhost:3000/api/consumer-create',
         signin: 'http://localhost:3000/api/consumer-signin'
+      },
+      otpEndpoints: {
+        request: 'http://localhost:3000/api/otp/request (POST)',
+        verify: 'http://localhost:3000/api/otp/verify (POST)'
       }
     }
   });

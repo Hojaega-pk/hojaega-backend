@@ -54,6 +54,10 @@ All API responses follow this structure:
 - `POST /api/consumer-create` - Create a new consumer
 - `POST /api/consumer-signin` - Sign in consumer with PIN
 
+### OTP
+- `POST /api/otp/request` - Request an OTP code
+- `POST /api/otp/verify` - Verify an OTP code
+
 ### Health & Documentation
 - `GET /health` - Health check endpoint
 - `GET /api-docs` - API documentation (Swagger UI)
@@ -707,24 +711,24 @@ Response (201 Created):
 ### 14. Service Provider Sign In
 POST `/api/sp-signin`
 
-Sign in an existing service provider using their 6-digit PIN.
+Sign in an existing service provider using their 4-digit PIN.
 
 **Purpose**: Authenticate service providers to access their account information and services.
 
 Request Body:
 ```json
 {
-  "pin": "string (required)"
+  "pin": "string (required, 4 digits)"
 }
 ```
 
 **Request Fields**:
-- `pin`: 6-digit PIN code (required, exactly 6 digits 0-9)
+- `pin`: 4-digit PIN code (required, exactly 4 digits 0-9)
 
 Example Request:
 ```json
 {
-  "pin": "123456"
+  "pin": "1234"
 }
 ```
 
@@ -753,7 +757,7 @@ Response (200 OK):
 
 **Validation Rules**:
 - `pin` is required
-- `pin` must be exactly 6 digits (0-9)
+- `pin` must be exactly 4 digits (0-9)
 - PIN must match an existing active service provider record
 - Only active service providers (`isActive: true`) can sign in
 
@@ -866,7 +870,7 @@ Response (200 OK):
 
 ---
 
-### 14. Serve Payment Proof Images
+### 16. Serve Payment Proof Images
 GET `/api/images/{filename}`
 
 Serve payment proof images for subscription renewals.
@@ -892,6 +896,93 @@ Response:
 - In production, will serve actual image files
 - Images should be stored in a secure location
 - Consider implementing authentication for sensitive images
+
+---
+
+### 17. Request OTP
+POST `/api/otp/request`
+
+Request an OTP code for various purposes.
+
+Request Body:
+```json
+{
+  "contactNo": "string (required)",
+  "purpose": "SP_SIGNIN | CONSUMER_SIGNIN | GENERIC (optional, default: GENERIC)",
+  "length": 6,
+  "ttlSeconds": 300
+}
+```
+
+Behavior:
+- For `SP_SIGNIN`: OTP is generated only if the service provider with this `contactNo` exists; otherwise returns 404.
+- For other purposes (e.g., `GENERIC`, `CONSUMER_SIGNIN`): If an account already exists with this `contactNo`, returns 409 and does not generate OTP.
+
+Validation Rules:
+- `contactNo` must be 6-15 digits.
+- `length` is clamped between 4 and 8 (default 6).
+- `ttlSeconds` is clamped between 60 and 900 (default 300 seconds).
+
+Responses:
+- 201 Created
+```json
+{
+  "success": true,
+  "message": "OTP generated",
+  "data": {
+    "id": 123,
+    "contactNo": "922003753912",
+    "purpose": "SP_SIGNIN",
+    "expiresAt": "2024-01-15T10:35:00.000Z",
+    "code": "123456" // Returned only in non-production environments
+  }
+}
+```
+- 404 Not Found (for `SP_SIGNIN` when account not found)
+```json
+{ "success": false, "message": "No account found with this contact number" }
+```
+- 409 Conflict (for non-`SP_SIGNIN` when account exists)
+```json
+{ "success": false, "message": "Account with this contact number already exists" }
+```
+- 400 Bad Request (validation errors)
+- 500 Internal Server Error
+
+---
+
+### 18. Verify OTP
+POST `/api/otp/verify`
+
+Verify a previously generated OTP code.
+
+Request Body:
+```json
+{
+  "contactNo": "string (required)",
+  "purpose": "SP_SIGNIN | CONSUMER_SIGNIN | GENERIC (optional, default: GENERIC)",
+  "code": "numeric string 4-8 digits (required)"
+}
+```
+
+Responses:
+- 200 OK
+```json
+{ "success": true, "message": "OTP verified" }
+```
+- 404 Not Found (no active OTP found)
+```json
+{ "success": false, "message": "No active OTP found" }
+```
+- 400 Bad Request (expired OTP or missing fields)
+```json
+{ "success": false, "message": "OTP expired" }
+```
+- 401 Unauthorized (invalid OTP)
+```json
+{ "success": false, "message": "Invalid OTP" }
+```
+- 500 Internal Server Error
 
 ---
 
