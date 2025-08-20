@@ -34,35 +34,26 @@ router.post('/consumer-create', async (req, res) => {
       });
     }
 
-    // Validate pin format (exactly 6 digits)
-    if (!/^[0-9]{6}$/.test(pin)) {
+    // Validate pin format (exactly 4 digits)
+    if (!/^[0-9]{4}$/.test(pin)) {
       return res.status(400).json({ 
         error: 'Invalid pin format',
-        message: 'Pin must be exactly 6 digits (0-9)'
+        message: 'Pin must be exactly 4 digits (0-9)'
       });
     }
 
-    // Check if consumer with same name and city already exists
-    const existingConsumer = await prisma.consumer.findFirst({
-      where: {
-        name: name.trim(),
-        city: city.trim()
-      }
-    });
+    // Hash the PIN before saving
+    const bcrypt = require('bcrypt');
+    const saltRounds = 10;
+    const hashedPin = await bcrypt.hash(pin, saltRounds);
 
-    if (existingConsumer) {
-      return res.status(409).json({ 
-        error: 'Consumer already exists',
-        message: 'A consumer with this name and city already exists'
-      });
-    }
-
-    // Create consumer
+    // Create consumer with contactNo as empty string (to be updated later)
     const consumer = await prisma.consumer.create({
       data: {
         name: name.trim(),
         city: city.trim(),
-        pin: pin
+        contactNo: '',
+        pin: hashedPin
       }
     });
 
@@ -70,6 +61,7 @@ router.post('/consumer-create', async (req, res) => {
       id: consumer.id,
       name: consumer.name,
       city: consumer.city,
+      contactNo: consumer.contactNo,
       pin: consumer.pin,
       createdAt: consumer.createdAt,
       updatedAt: consumer.updatedAt
@@ -99,44 +91,58 @@ router.post('/consumer-signin', async (req, res) => {
       timestamp: new Date().toISOString()
     });
     
-    const { pin } = req.body;
+    const { contactNo, pin } = req.body;
 
     // Validate required fields
-    if (!pin) {
-      return res.status(400).json({ 
-        error: 'PIN is required',
-        message: 'PIN field must be provided'
+    if (!contactNo || !pin) {
+      return res.status(400).json({
+        error: 'Contact number and PIN are required',
+        message: 'Both contactNo and pin must be provided'
       });
     }
 
-    // Validate pin format (exactly 6 digits) - convert to string first
+    // Validate pin format (exactly 4 digits)
     const pinString = String(pin);
-    if (!/^[0-9]{6}$/.test(pinString)) {
-      return res.status(400).json({ 
+    if (!/^[0-9]{4}$/.test(pinString)) {
+      return res.status(400).json({
         error: 'Invalid pin format',
-        message: 'PIN must be exactly 6 digits (0-9)'
+        message: 'PIN must be exactly 4 digits (0-9)'
       });
     }
 
-    // Find consumer with matching PIN (convert to string to handle both string and number inputs)
+    // Find consumer by contactNo
     const consumer = await prisma.consumer.findFirst({
       where: {
-        pin: String(pin)
+        contactNo: String(contactNo)
       }
     });
 
     if (!consumer) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         error: 'Invalid credentials',
-        message: 'PIN is incorrect or no consumer found with this PIN'
+        message: 'No consumer found with this contact number'
       });
     }
 
-    // Successfully signed in
+    // Compare PIN (hashed)
+    const bcrypt = require('bcrypt');
+    const pinMatch = await bcrypt.compare(pinString, consumer.pin);
+    if (!pinMatch) {
+      return res.status(401).json({
+        error: 'Invalid credentials',
+        message: 'PIN is incorrect'
+      });
+    }
+
+    // Issue JWT token (valid for 7 days)
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign({ id: consumer.id, contactNo: consumer.contactNo }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
     const response: ConsumerResponse = {
       id: consumer.id,
       name: consumer.name,
       city: consumer.city,
+      contactNo: consumer.contactNo,
       pin: consumer.pin,
       createdAt: consumer.createdAt,
       updatedAt: consumer.updatedAt
@@ -145,6 +151,7 @@ router.post('/consumer-signin', async (req, res) => {
     res.json({
       success: true,
       message: 'Consumer signed in successfully',
+      token,
       data: response
     });
 
