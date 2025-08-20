@@ -1,3 +1,4 @@
+
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import { validateServiceProvider } from '../middleware/validation';
@@ -132,7 +133,7 @@ router.get('/sp-get/:id', async (req: Request, res: Response) => {
 
 router.post('/sp-create', validateServiceProvider, async (req: TypedRequest, res: Response) => {
   try {
-    const { name, city, skillset, contactNo, pin, description, experience } = req.body;
+  const { name, city, skillset, pin, description, experience } = req.body;
 
     // Validate 4-digit PIN
     if (pin && !/^[0-9]{4}$/.test(pin)) {
@@ -142,19 +143,7 @@ router.post('/sp-create', validateServiceProvider, async (req: TypedRequest, res
       });
     }
 
-    // Check if service provider already exists
-    const existingProvider = await prismaService.getPrismaClient().serviceProvider.findFirst({
-      where: {
-        contactNo
-      }
-    });
-
-    if (existingProvider) {
-      return res.status(400).json({
-        success: false,
-        message: 'Service provider with this contact number already exists'
-      });
-    }
+  // Initial creation does not check contactNo uniqueness (will be set after OTP verification)
 
     // Calculate subscription dates
     const subscriptionStartDate = new Date();
@@ -173,7 +162,7 @@ router.post('/sp-create', validateServiceProvider, async (req: TypedRequest, res
         name,
         city,
         skillset,
-        contactNo,
+        contactNo: '', // Set to empty string initially
         pin: hashedPin || null,
         description: description || null,
         experience: experience || null,
@@ -698,6 +687,71 @@ router.post('/payment-upload', upload.single('screenshot'), async (req: Request,
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Service Provider Sign-in
+router.post('/sp-signin', async (req: Request, res: Response) => {
+  try {
+    const { contactNo, pin } = req.body;
+
+    if (!contactNo || !pin) {
+      return res.status(400).json({
+        error: 'Contact number and PIN are required',
+        message: 'Both contactNo and pin must be provided'
+      });
+    }
+
+    // Validate pin format (exactly 4 digits)
+    const pinString = String(pin);
+    if (!/^[0-9]{4}$/.test(pinString)) {
+      return res.status(400).json({
+        error: 'Invalid pin format',
+        message: 'PIN must be exactly 4 digits (0-9)'
+      });
+    }
+
+    // Find service provider by contactNo
+    const serviceProvider = await prismaService.getPrismaClient().serviceProvider.findFirst({
+      where: {
+        contactNo: String(contactNo)
+      }
+    });
+
+    if (!serviceProvider) {
+      return res.status(401).json({
+        error: 'Invalid credentials',
+        message: 'No service provider found with this contact number'
+      });
+    }
+
+    // Compare PIN (hashed)
+    const bcrypt = require('bcrypt');
+    const pinMatch = await bcrypt.compare(pinString, serviceProvider.pin || '');
+    if (!pinMatch) {
+      return res.status(401).json({
+        error: 'Invalid credentials',
+        message: 'PIN is incorrect'
+      });
+    }
+
+    // Issue JWT token (valid for 7 days)
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign({ id: serviceProvider.id, contactNo: serviceProvider.contactNo }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
+    res.json({
+      success: true,
+      message: 'Service provider signed in successfully',
+      token,
+      data: serviceProvider
+    });
+  } catch (error) {
+    console.error('Error signing in service provider:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to sign in service provider. Please try again later.',
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });

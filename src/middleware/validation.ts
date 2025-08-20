@@ -35,13 +35,16 @@ export const validateServiceProvider = (req: Request, res: Response, next: NextF
   }
 
   // Contact number validation
-  if (!contactNo || typeof contactNo !== 'string') {
-    errors.push({ field: 'contactNo', message: 'Contact number is required and must be a string' });
-  } else {
-    // Basic phone number validation (adjust regex as needed for your region)
-    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-    if (!phoneRegex.test(contactNo.replace(/[\s\-\(\)]/g, ''))) {
-      errors.push({ field: 'contactNo', message: 'Please enter a valid contact number' });
+  // Allow contactNo to be empty or missing during initial creation
+  if (contactNo !== undefined && contactNo !== null && contactNo !== '') {
+    if (typeof contactNo !== 'string') {
+      errors.push({ field: 'contactNo', message: 'Contact number must be a string' });
+    } else {
+      // Basic phone number validation (adjust regex as needed for your region)
+      const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+      if (!phoneRegex.test(contactNo.replace(/[\s\-\(\)]/g, ''))) {
+        errors.push({ field: 'contactNo', message: 'Please enter a valid contact number' });
+      }
     }
   }
 

@@ -46,6 +46,7 @@ model Consumer {
   id        Int      @id @default(autoincrement())
   name      String
   city      String
+  contactNo String   // Stores user's phone number for authentication
   pin       String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
