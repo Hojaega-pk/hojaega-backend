@@ -651,7 +651,6 @@
           "contactNo": { "type": "string" },
           "description": { "type": "string" },
           "experience": { "type": "string" },
-          "screenshot": { "type": "string", "description": "Image URL for payment proof" },
           "pin": { 
             "type": "string", 
             "description": "4-digit PIN code",

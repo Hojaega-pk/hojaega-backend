@@ -30,8 +30,9 @@
   ```
 
 ## 4. Prisma Migrations
-- Migrations are run automatically when the backend container starts.
-- No manual migration step is needed.
+
+- run prisma migration locally before building the containers 
+    npx prisma migrate dev
 
 ## 5. Prisma Studio
 - Prisma Studio is available at [http://localhost:5555](http://localhost:5555) when the `prisma-studio` service is running.
