@@ -27,6 +27,6 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:3000/health || exit 1
 
-# Start the application with migrations
-CMD sh -c "npx prisma migrate deploy && node dist/index.js"
+# Start the application with migrations after DB is ready
+CMD sh -c "npx wait-on tcp:postgres:5432 && npx prisma migrate deploy && node dist/index.js"
 

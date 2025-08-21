@@ -66,4 +66,44 @@ docker-compose up -d --build
 
 ---
 
-This guide summarizes the steps and troubleshooting tips for running hojaega-backend with Docker Desktop.
+## 10. About Different Commands
+
+### `npx prisma generate`
+
+* Generates the **Prisma Client** (TypeScript code) in `node_modules/.prisma/client`.
+* Required after every `schema.prisma` change.
+* **Does not touch the database.**
+
+In Docker, the **Dockerfile already runs this step**:
+
+```dockerfile
+RUN npx prisma generate
+```
+
+So you don’t need to run it locally unless you are developing **outside of Docker** (e.g., `npm run start:dev` on your host machine).
+
+---
+
+## 🔹 Development Workflow
+
+1. Edit `schema.prisma`.
+2. Run locally:
+
+   ```bash
+   npx prisma migrate dev --name <meaningful_name_of_the_change>
+   ```
+3. Commit the generated migration files (`prisma/migrations/...`).
+4. Rebuild your Docker containers.
+5. On container startup, Prisma will run:
+
+   ```bash
+   npx prisma migrate deploy
+   ```
+
+   → applies the committed migrations to Postgres.
+
+
+## 🔹 Key Points
+
+* Always run `migrate dev` locally to create migration files.
+* Commit migration files to Git so others (and Docker) can apply them.
