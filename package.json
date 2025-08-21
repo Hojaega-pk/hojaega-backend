@@ -43,7 +43,8 @@
     "reflect-metadata": "^0.2.2",
     "swagger-ui-express": "^5.0.1",
     "twilio": "^5.8.0",
-    "typeorm": "^0.3.25"
+    "typeorm": "^0.3.25",
+    "wait-on": "^8.0.4"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
