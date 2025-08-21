@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import axios from 'axios';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import { prismaService } from '../services/prisma.service';
@@ -102,12 +103,29 @@ router.post('/otp/request', async (req: Request, res: Response) => {
       }
     });
 
-    // TODO: Integrate SMS provider here. For now, return code only in development.
-    const isDev = process.env.NODE_ENV !== 'production';
+    // Send OTP via SMS using TextBee
+    const DEVICE_ID = process.env.TEXTBEE_DEVICE_ID;
+    const API_KEY = process.env.TEXTBEE_API_KEY;
+    let smsSent = false;
+    let smsError = null;
+    try {
+      const url = `https://api.textbee.dev/api/v1/gateway/devices/${DEVICE_ID}/send-sms`;
+      await axios.post(
+        url,
+        { recipients: [String(contactNo)], message: `Your OTP code is: ${code}` },
+        { headers: { 'x-api-key': API_KEY } }
+      );
+      smsSent = true;
+    } catch (err) {
+      smsError = err instanceof Error ? err.message : 'Unknown error';
+    }
 
+    const isDev = process.env.NODE_ENV !== 'production';
     return res.status(201).json({
       success: true,
       message: 'OTP generated',
+      smsSent,
+      smsError,
       data: {
         id: saved.id,
         contactNo: saved.contactNo,
