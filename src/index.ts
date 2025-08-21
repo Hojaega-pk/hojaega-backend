@@ -16,10 +16,12 @@ setupSwagger(app);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/screenshots', express.static(path.join(__dirname, '../screenshots')));
+import smsRoutes from './routes/smsRoutes';
 app.use('/api', serviceProviderRoutes);
 app.use('/api', serviceProviderSigninRoutes);
 app.use('/api', consumerRoutes);
 app.use('/api', otpRoutes);
+app.use('/sms', smsRoutes);
 
 // CORS middleware for localhost (will be updated to Hojaega.pk when deployed)
 app.use((req: Request, res: Response, next: NextFunction) => {
