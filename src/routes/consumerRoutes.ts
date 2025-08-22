@@ -1,9 +1,9 @@
 import express from 'express';
 import { prismaService } from '../services/prisma.service';
 import { CreateConsumerDto, ConsumerResponse } from '../entities/Consumer';
+import { validateForgotPassword } from '../middleware/validation';
 
 const router = express.Router();
-const prisma = prismaService.getPrismaClient();
 
 // Create consumer
 router.post('/consumer-create', async (req, res) => {
@@ -48,7 +48,7 @@ router.post('/consumer-create', async (req, res) => {
     const hashedPin = await bcrypt.hash(pin, saltRounds);
 
     // Create consumer with contactNo as empty string (to be updated later)
-    const consumer = await prisma.consumer.create({
+    const consumer = await prismaService.getPrismaClient().consumer.create({
       data: {
         name: name.trim(),
         city: city.trim(),
@@ -111,7 +111,7 @@ router.post('/consumer-signin', async (req, res) => {
     }
 
     // Find consumer by contactNo
-    const consumer = await prisma.consumer.findFirst({
+    const consumer = await prismaService.getPrismaClient().consumer.findFirst({
       where: {
         contactNo: String(contactNo)
       }
@@ -134,10 +134,6 @@ router.post('/consumer-signin', async (req, res) => {
       });
     }
 
-    // Issue JWT token (valid for 7 days)
-    const jwt = require('jsonwebtoken');
-    const token = jwt.sign({ id: consumer.id, contactNo: consumer.contactNo }, process.env.JWT_SECRET, { expiresIn: '7d' });
-
     const response: ConsumerResponse = {
       id: consumer.id,
       name: consumer.name,
@@ -151,7 +147,6 @@ router.post('/consumer-signin', async (req, res) => {
     res.json({
       success: true,
       message: 'Consumer signed in successfully',
-      token,
       data: response
     });
 
@@ -167,6 +162,85 @@ router.post('/consumer-signin', async (req, res) => {
       error: 'Internal server error',
       message: 'Failed to sign in consumer. Please try again later.',
       details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Forgot password - Reset PIN
+router.post('/forgot-password', validateForgotPassword, async (req, res) => {
+  try {
+    const { contactNo, newPin } = req.body;
+
+    // Validate required fields
+    if (!contactNo || !newPin) {
+      return res.status(400).json({
+        error: 'Contact number and new PIN are required',
+        message: 'Both contactNo and newPin must be provided'
+      });
+    }
+
+    // Validate new PIN format (exactly 4 digits)
+    if (!/^[0-9]{4}$/.test(newPin)) {
+      return res.status(400).json({
+        error: 'Invalid PIN format',
+        message: 'New PIN must be exactly 4 digits (0-9)'
+      });
+    }
+
+    // First, try to find a consumer with this contact number
+    let consumer = await prismaService.getPrismaClient().consumer.findFirst({
+      where: {
+        contactNo: String(contactNo)
+      }
+    });
+
+    // If not found as consumer, try to find as service provider
+    let serviceProvider = null;
+    if (!consumer) {
+      serviceProvider = await prismaService.getPrismaClient().serviceProvider.findFirst({
+        where: {
+          contactNo: String(contactNo)
+        }
+      });
+    }
+
+    if (!consumer && !serviceProvider) {
+      return res.status(404).json({
+        error: 'User not found',
+        message: 'No user found with this contact number'
+      });
+    }
+
+    // Hash the new PIN
+    const bcrypt = require('bcrypt');
+    const saltRounds = 10;
+    const hashedNewPin = await bcrypt.hash(newPin, saltRounds);
+
+    // Update the PIN based on user type
+    if (consumer) {
+      await prismaService.getPrismaClient().consumer.update({
+        where: { id: consumer.id },
+        data: { pin: hashedNewPin }
+      });
+    } else if (serviceProvider) {
+      await prismaService.getPrismaClient().serviceProvider.update({
+        where: { id: serviceProvider.id },
+        data: { pin: hashedNewPin }
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'PIN updated successfully',
+      userType: consumer ? 'consumer' : 'serviceProvider',
+      contactNo: String(contactNo)
+    });
+
+  } catch (error) {
+    console.error('Error updating PIN:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to update PIN. Please try again later.'
     });
   }
 });

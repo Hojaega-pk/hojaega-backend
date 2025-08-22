@@ -80,7 +80,8 @@ app.get('/', (req: Request, res: Response) => {
       },
       consumerEndpoints: {
         create: 'http://localhost:3000/api/consumer-create',
-        signin: 'http://localhost:3000/api/consumer-signin'
+        signin: 'http://localhost:3000/api/consumer-signin',
+        forgotPassword: 'http://localhost:3000/api/forgot-password (POST)'
       },
       otpEndpoints: {
         request: 'http://localhost:3000/api/otp/request (POST)',

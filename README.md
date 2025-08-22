@@ -64,6 +64,7 @@ $ npm install
 ### Consumers
 - `POST /api/consumer-create` - Create a new consumer
 - `POST /api/consumer-signin` - Sign in consumer with PIN
+- `POST /api/forgot-password` - Reset PIN for consumers and service providers
 
 ### Health & Documentation
 - `GET /health` - Health check endpoint
