@@ -58,6 +58,7 @@ enum OtpPurpose {
   SP_SIGNIN
   CONSUMER_SIGNIN
   GENERIC
+  PIN_RESET
 }
 
 model OtpCode {
