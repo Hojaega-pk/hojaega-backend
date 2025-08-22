@@ -118,7 +118,8 @@ app.get('/', (req: Request, res: Response) => {
       },
              consumerEndpoints: {
          create: '/api/consumer-create',
-         signin: '/api/consumer-signin'
+         signin: '/api/consumer-signin',
+         forgotPassword: '/api/forgot-password (POST)'
        }
     }
   });

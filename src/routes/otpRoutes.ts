@@ -67,7 +67,7 @@ router.post('/otp/request', async (req: Request, res: Response) => {
       // For sign-in, require that the account exists
       if (!existingAccount) {
         return res.status(404).json({
-          success: false,
+      success: false,
           message: 'No account found with this contact number'
         });
       }
@@ -75,7 +75,7 @@ router.post('/otp/request', async (req: Request, res: Response) => {
       // For other purposes (e.g., signup), block if account already exists
       if (existingAccount) {
         return res.status(409).json({
-          success: false,
+        success: false,
           message: 'Account with this contact number already exists'
         });
       }

@@ -53,6 +53,7 @@ All API responses follow this structure:
 ### Consumers
 - `POST /api/consumer-create` - Create a new consumer
 - `POST /api/consumer-signin` - Sign in consumer with PIN
+- `POST /api/forgot-password` - Reset PIN for consumers and service providers
 
 ### OTP
 - `POST /api/otp/request` - Request an OTP code
@@ -1018,6 +1019,99 @@ Responses:
 - **Service Continuity**: Providers can't operate without active subscription
 - **Revenue Tracking**: Monitor subscription renewals and payments
 - **Customer Experience**: Clear communication about subscription status
+
+---
+
+### 17. Forgot Password - Reset PIN
+POST `/api/forgot-password`
+
+Reset PIN for both consumers and service providers using their contact number.
+
+**Purpose**: Allow users to reset their PIN when they forget it.
+
+Request Body:
+```json
+{
+  "contactNo": "string (required)",
+  "newPin": "string (required)"
+}
+```
+
+**Request Fields**:
+- `contactNo`: User's contact number (required, minimum 10 characters)
+- `newPin`: New 4-digit PIN code (required, exactly 4 digits 0-9)
+
+Example Request:
+```json
+{
+  "contactNo": "1234567890",
+  "newPin": "5678"
+}
+```
+
+Response (200 OK):
+```json
+{
+  "success": true,
+  "message": "PIN updated successfully",
+  "userType": "consumer",
+  "contactNo": "1234567890"
+}
+```
+
+**Validation Rules**:
+- `contactNo` and `newPin` are required
+- `contactNo` must be at least 10 characters long
+- `newPin` must be exactly 4 digits (0-9)
+- Contact number must exist in either consumer or service provider table
+
+**Error Response (400 - Validation Error)**:
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "errors": [
+    {
+      "field": "contactNo",
+      "message": "Contact number is required and must be a string"
+    }
+  ]
+}
+```
+
+**Error Response (400 - Invalid PIN)**:
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "errors": [
+    {
+      "field": "newPin",
+      "message": "New PIN must be exactly 4 digits (0-9)"
+    }
+  ]
+}
+```
+
+**Error Response (404 - User Not Found)**:
+```json
+{
+  "error": "User not found",
+  "message": "No user found with this contact number"
+}
+```
+
+**Use Cases**:
+- PIN reset for forgotten passwords
+- Account recovery
+- Security enhancement
+- Works for both consumer and service provider accounts
+
+**Features**:
+- Automatically detects user type (consumer or service provider)
+- Updates PIN in the correct table
+- Returns user type in response
+- Secure PIN hashing before storage
 
 ---
 

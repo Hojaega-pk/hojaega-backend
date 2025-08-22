@@ -133,7 +133,7 @@ router.get('/sp-get/:id', async (req: Request, res: Response) => {
 
 router.post('/sp-create', validateServiceProvider, async (req: TypedRequest, res: Response) => {
   try {
-  const { name, city, skillset, pin, description, experience } = req.body;
+  const { name, city, skillset, contactNo, pin, description, experience } = req.body;
 
     // Validate 4-digit PIN
     if (pin && !/^[0-9]{4}$/.test(pin)) {
@@ -143,7 +143,25 @@ router.post('/sp-create', validateServiceProvider, async (req: TypedRequest, res
       });
     }
 
-  // Initial creation does not check contactNo uniqueness (will be set after OTP verification)
+    // Validate contact number
+    if (!contactNo || contactNo.trim().length < 10) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid contact number is required (minimum 10 characters)'
+      });
+    }
+
+    // Check if service provider with this contact number already exists
+    const existingProvider = await prismaService.getPrismaClient().serviceProvider.findFirst({
+      where: { contactNo: contactNo.trim() }
+    });
+
+    if (existingProvider) {
+      return res.status(400).json({
+        success: false,
+        message: 'Service provider with this contact number already exists'
+      });
+    }
 
     // Calculate subscription dates
     const subscriptionStartDate = new Date();
@@ -162,7 +180,7 @@ router.post('/sp-create', validateServiceProvider, async (req: TypedRequest, res
         name,
         city,
         skillset,
-        contactNo: '', // Set to empty string initially
+        contactNo: contactNo.trim(),
         pin: hashedPin || null,
         description: description || null,
         experience: experience || null,
@@ -736,14 +754,9 @@ router.post('/sp-signin', async (req: Request, res: Response) => {
       });
     }
 
-    // Issue JWT token (valid for 7 days)
-    const jwt = require('jsonwebtoken');
-    const token = jwt.sign({ id: serviceProvider.id, contactNo: serviceProvider.contactNo }, process.env.JWT_SECRET, { expiresIn: '7d' });
-
     res.json({
       success: true,
       message: 'Service provider signed in successfully',
-      token,
       data: serviceProvider
     });
   } catch (error) {
