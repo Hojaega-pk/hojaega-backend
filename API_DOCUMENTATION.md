@@ -635,7 +635,7 @@ Response:
 ### 13. Create Consumer
 POST `/api/consumer-create`
 
-Create a new consumer with name, city, and 6-digit PIN.
+Create a new consumer with name, city, contact number, and 4-digit PIN.
 
 **Purpose**: Register new consumers who can use the platform to find service providers.
 
@@ -644,6 +644,7 @@ Request Body:
 {
   "name": "string (required)",
   "city": "string (required)",
+  "contactNo": "string (required)",
   "pin": "string (required)"
 }
 ```
@@ -651,14 +652,16 @@ Request Body:
 **Request Fields**:
 - `name`: Consumer's full name (required)
 - `city`: Consumer's city (required)
-- `pin`: 6-digit PIN code (required, exactly 6 digits 0-9)
+- `contactNo`: Consumer's contact number (required, 6-15 digits with optional + prefix)
+- `pin`: 4-digit PIN code (required, exactly 4 digits 0-9)
 
 Example Request:
 ```json
 {
   "name": "John Doe",
   "city": "Karachi",
-      "pin": "123456"
+  "contactNo": "+92-300-1234567",
+  "pin": "1234"
 }
 ```
 
@@ -671,7 +674,8 @@ Response (201 Created):
     "id": 1,
     "name": "John Doe",
     "city": "Karachi",
-    "pin": "123456",
+    "contactNo": "+92-300-1234567",
+    "pin": "1234",
     "createdAt": "2024-01-15T10:30:00.000Z",
     "updatedAt": "2024-01-15T10:30:00.000Z"
   }
@@ -679,16 +683,25 @@ Response (201 Created):
 ```
 
 **Validation Rules**:
-- `name`, `city`, and `pin` are required
-- `name` and `city` cannot be empty strings
+- `name`, `city`, `contactNo`, and `pin` are required
+- `name`, `city`, and `contactNo` cannot be empty strings
+- `contactNo` must be 6-15 digits with optional + prefix
 - `pin` must be exactly 4 digits (0-9)
-- Consumer with same name and city combination cannot exist
+- Consumer with same contact number cannot exist
 
 **Error Response (400 - Validation Error)**:
 ```json
 {
-  "error": "Name, city and pin are required",
-  "message": "Name, city and pin fields must be provided"
+  "error": "Name, city, contact number and pin are required",
+  "message": "Name, city, contact number and pin fields must be provided"
+}
+```
+
+**Error Response (400 - Invalid Contact Number)**:
+```json
+{
+  "error": "Invalid contact number format",
+  "message": "Please enter a valid contact number (6-15 digits with optional + prefix)"
 }
 ```
 
@@ -703,8 +716,8 @@ Response (201 Created):
 **Error Response (409 - Duplicate Consumer)**:
 ```json
 {
-  "error": "Consumer already exists",
-  "message": "A consumer with this name and city already exists"
+  "error": "Contact number already exists",
+  "message": "A consumer with this contact number already exists"
 }
 ```
 
