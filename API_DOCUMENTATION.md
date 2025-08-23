@@ -53,11 +53,12 @@ All API responses follow this structure:
 ### Consumers
 - `POST /api/consumer-create` - Create a new consumer
 - `POST /api/consumer-signin` - Sign in consumer with PIN
-- `POST /api/forgot-password` - Reset PIN for consumers and service providers
+- `POST /api/forgot-password` - Reset PIN (Unified endpoint for both consumers and service providers)
 
 ### OTP
 - `POST /api/otp/request` - Request an OTP code
 - `POST /api/otp/verify` - Verify an OTP code
+- `POST /api/otp/pin-reset-request` - Request PIN reset OTP code
 
 ### Health & Documentation
 - `GET /health` - Health check endpoint
@@ -952,7 +953,71 @@ Responses:
 
 ---
 
-### 18. Verify OTP
+### 18. Request PIN Reset OTP
+POST `/api/otp/pin-reset-request`
+
+Request a PIN reset OTP code for existing accounts.
+
+**Purpose**: Generate and send OTP for PIN reset operations.
+
+Request Body:
+```json
+{
+  "contactNo": "string (required)",
+  "length": "number (optional, default: 6)",
+  "ttlSeconds": "number (optional, default: 300)"
+}
+```
+
+**Request Fields**:
+- `contactNo`: User's contact number (required, 6-15 digits)
+- `length`: OTP length (optional, 4-8 digits, default: 6)
+- `ttlSeconds`: OTP validity in seconds (optional, 60-900, default: 300)
+
+**Responses**:
+- 201 Created (OTP generated successfully)
+```json
+{
+  "success": true,
+  "message": "PIN reset OTP generated",
+  "smsSent": true,
+  "smsError": null,
+  "data": {
+    "id": 123,
+    "contactNo": "1234567890",
+    "purpose": "PIN_RESET",
+    "expiresAt": "2025-08-22T18:00:00.000Z"
+  }
+}
+```
+
+- 400 Bad Request (validation errors)
+```json
+{
+  "success": false,
+  "message": "contactNo must be 6-15 digits"
+}
+```
+
+- 404 Not Found (no account exists)
+```json
+{
+  "success": false,
+  "message": "No account found with this contact number"
+}
+```
+
+- 500 Internal Server Error
+
+**Features**:
+- Only works for existing accounts (consumers or service providers)
+- Automatically sends SMS via TextBee
+- OTP expires after specified time (default: 5 minutes)
+- Invalidates previous active OTPs for same contact/purpose
+
+---
+
+### 19. Verify OTP
 POST `/api/otp/verify`
 
 Verify a previously generated OTP code.
@@ -1022,30 +1087,71 @@ Responses:
 
 ---
 
-### 17. Forgot Password - Reset PIN
+### 17. Forgot Password - Reset PIN (Unified)
 POST `/api/forgot-password`
 
-Reset PIN for both consumers and service providers using their contact number.
+Reset PIN for both consumers and service providers using OTP verification.
 
-**Purpose**: Allow users to reset their PIN when they forget it.
+**Purpose**: Allow users to securely reset their PIN when they forget it using OTP verification. This unified endpoint automatically detects whether the user is a consumer or service provider.
+
+**Step 1: Request PIN Reset OTP**
+POST `/api/otp/pin-reset-request`
 
 Request Body:
 ```json
 {
   "contactNo": "string (required)",
-  "newPin": "string (required)"
+  "length": "number (optional, default: 6)",
+  "ttlSeconds": "number (optional, default: 300)"
+}
+```
+
+**Step 2: Reset PIN with OTP**
+Request Body:
+```json
+{
+  "contactNo": "string (required)",
+  "newPin": "string (required)",
+  "otpCode": "string (required)"
 }
 ```
 
 **Request Fields**:
 - `contactNo`: User's contact number (required, minimum 10 characters)
 - `newPin`: New 4-digit PIN code (required, exactly 4 digits 0-9)
+- `otpCode`: OTP code received via SMS (required, 4-8 digits)
 
-Example Request:
+**Step 1 Example - Request OTP:**
 ```json
 {
   "contactNo": "1234567890",
-  "newPin": "5678"
+  "length": 6,
+  "ttlSeconds": 300
+}
+```
+
+**Step 1 Response:**
+```json
+{
+  "success": true,
+  "message": "PIN reset OTP generated",
+  "smsSent": true,
+  "smsError": null,
+  "data": {
+    "id": 123,
+    "contactNo": "1234567890",
+    "purpose": "PIN_RESET",
+    "expiresAt": "2025-08-22T18:00:00.000Z"
+  }
+}
+```
+
+**Step 2 Example - Reset PIN:**
+```json
+{
+  "contactNo": "1234567890",
+  "newPin": "5678",
+  "otpCode": "123456"
 }
 ```
 
@@ -1108,10 +1214,14 @@ Response (200 OK):
 - Works for both consumer and service provider accounts
 
 **Features**:
-- Automatically detects user type (consumer or service provider)
-- Updates PIN in the correct table
-- Returns user type in response
-- Secure PIN hashing before storage
+- **Unified endpoint** - Works for both consumers and service providers
+- **Automatic user type detection** - No need to specify user type
+- **Smart routing** - Updates PIN in the correct table automatically
+- **User type response** - Returns whether user is consumer or service provider
+- **Secure PIN hashing** - PINs are hashed before storage
+- **OTP verification** - Requires valid OTP before allowing PIN reset
+
+
 
 ---
 

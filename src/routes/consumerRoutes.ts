@@ -166,16 +166,16 @@ router.post('/consumer-signin', async (req, res) => {
   }
 });
 
-// Forgot password - Reset PIN
+// Forgot password - Reset PIN (Unified for both consumers and service providers)
 router.post('/forgot-password', validateForgotPassword, async (req, res) => {
   try {
-    const { contactNo, newPin } = req.body;
+    const { contactNo, newPin, otpCode } = req.body;
 
     // Validate required fields
-    if (!contactNo || !newPin) {
+    if (!contactNo || !newPin || !otpCode) {
       return res.status(400).json({
-        error: 'Contact number and new PIN are required',
-        message: 'Both contactNo and newPin must be provided'
+        error: 'Contact number, new PIN, and OTP code are required',
+        message: 'All three fields must be provided: contactNo, newPin, and otpCode'
       });
     }
 
@@ -184,6 +184,45 @@ router.post('/forgot-password', validateForgotPassword, async (req, res) => {
       return res.status(400).json({
         error: 'Invalid PIN format',
         message: 'New PIN must be exactly 4 digits (0-9)'
+      });
+    }
+
+    // Verify OTP first
+    const otpRecord = await prismaService.getPrismaClient().otpCode.findFirst({
+      where: {
+        contactNo: String(contactNo),
+        purpose: 'PIN_RESET',
+        consumedAt: null,
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (!otpRecord) {
+      return res.status(404).json({
+        error: 'No active OTP found',
+        message: 'Please request a new PIN reset OTP'
+      });
+    }
+
+    if (otpRecord.expiresAt.getTime() < Date.now()) {
+      return res.status(400).json({
+        error: 'OTP expired',
+        message: 'OTP has expired. Please request a new one'
+      });
+    }
+
+    // Verify OTP code
+    const bcrypt = require('bcrypt');
+    const isOtpValid = await bcrypt.compare(String(otpCode), otpRecord.codeHash);
+    if (!isOtpValid) {
+      // Update attempts count
+      await prismaService.getPrismaClient().otpCode.update({
+        where: { id: otpRecord.id },
+        data: { attempts: otpRecord.attempts + 1 }
+      });
+      return res.status(401).json({
+        error: 'Invalid OTP',
+        message: 'OTP code is incorrect'
       });
     }
 
@@ -212,7 +251,6 @@ router.post('/forgot-password', validateForgotPassword, async (req, res) => {
     }
 
     // Hash the new PIN
-    const bcrypt = require('bcrypt');
     const saltRounds = 10;
     const hashedNewPin = await bcrypt.hash(newPin, saltRounds);
 
@@ -228,6 +266,12 @@ router.post('/forgot-password', validateForgotPassword, async (req, res) => {
         data: { pin: hashedNewPin }
       });
     }
+
+    // Mark OTP as consumed
+    await prismaService.getPrismaClient().otpCode.update({
+      where: { id: otpRecord.id },
+      data: { consumedAt: new Date() }
+    });
 
     res.json({
       success: true,

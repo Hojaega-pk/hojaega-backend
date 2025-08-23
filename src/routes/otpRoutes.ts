@@ -28,7 +28,7 @@ function normalizeContactNo(raw: string): string {
   return String(raw).replace(/\D/g, '');
 }
 
-// Request OTP
+    // Request OTP
 router.post('/otp/request', async (req: Request, res: Response) => {
   try {
     const { contactNo, purpose = OtpPurpose.GENERIC, length = 6, ttlSeconds = 300 } = req.body as {
@@ -42,8 +42,10 @@ router.post('/otp/request', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'contactNo is required' });
     }
 
-    if (!/^[0-9]{6,15}$/.test(String(contactNo))) {
-      return res.status(400).json({ success: false, message: 'contactNo must be 6-15 digits' });
+    // Allow international phone numbers with + prefix and 6-15 digits
+    const phoneRegex = /^\+?[0-9]{6,15}$/;
+    if (!phoneRegex.test(String(contactNo))) {
+      return res.status(400).json({ success: false, message: 'contactNo must be 6-15 digits with optional + prefix' });
     }
 
     const safeLength = Math.min(Math.max(Number(length) || 6, 4), 8);
@@ -67,7 +69,15 @@ router.post('/otp/request', async (req: Request, res: Response) => {
       // For sign-in, require that the account exists
       if (!existingAccount) {
         return res.status(404).json({
-      success: false,
+          success: false,
+          message: 'No account found with this contact number'
+        });
+      }
+    } else if (purpose === OtpPurpose.PIN_RESET) {
+      // For PIN reset, require that the account exists
+      if (!existingAccount) {
+        return res.status(404).json({
+          success: false,
           message: 'No account found with this contact number'
         });
       }
@@ -75,7 +85,7 @@ router.post('/otp/request', async (req: Request, res: Response) => {
       // For other purposes (e.g., signup), block if account already exists
       if (existingAccount) {
         return res.status(409).json({
-        success: false,
+          success: false,
           message: 'Account with this contact number already exists'
         });
       }
@@ -190,6 +200,120 @@ router.post('/otp/verify', async (req: Request, res: Response) => {
     return res.json({ success: true, message: 'OTP verified' });
   } catch (error) {
     console.error('Error verifying OTP:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+    // Request PIN Reset OTP
+router.post('/otp/pin-reset-request', async (req: Request, res: Response) => {
+  try {
+    const { contactNo, length = 6, ttlSeconds = 300 } = req.body as {
+      contactNo?: string;
+      length?: number;
+      ttlSeconds?: number;
+    };
+
+    if (!contactNo) {
+      return res.status(400).json({ success: false, message: 'contactNo is required' });
+    }
+
+    // Allow international phone numbers with + prefix and 6-15 digits
+    const phoneRegex = /^\+?[0-9]{6,15}$/;
+    if (!phoneRegex.test(String(contactNo))) {
+      return res.status(400).json({ success: false, message: 'contactNo must be 6-15 digits with optional + prefix' });
+    }
+
+    const safeLength = Math.min(Math.max(Number(length) || 6, 4), 8);
+    const safeTtl = Math.min(Math.max(Number(ttlSeconds) || 300, 60), 900);
+
+    // Check if an account exists for this contact number
+    const normalized = normalizeContactNo(String(contactNo));
+    const lastSeven = normalized.slice(-7);
+    const existingAccount = await prisma.serviceProvider.findFirst({
+      where: {
+        OR: [
+          { contactNo: String(contactNo) },
+          { contactNo: { contains: normalized } },
+          { contactNo: { contains: lastSeven } },
+        ]
+      }
+    });
+
+    // Also check for consumer accounts
+    const existingConsumer = await prisma.consumer.findFirst({
+      where: {
+        OR: [
+          { contactNo: String(contactNo) },
+          { contactNo: { contains: normalized } },
+          { contactNo: { contains: lastSeven } },
+        ]
+      }
+    });
+
+    // For PIN reset, require that an account exists
+    if (!existingAccount && !existingConsumer) {
+      return res.status(404).json({
+        success: false,
+        message: 'No account found with this contact number'
+      });
+    }
+
+    // Invalidate previous active OTPs for same contact/purpose
+    await prisma.otpCode.deleteMany({
+      where: {
+        contactNo: String(contactNo),
+        purpose: OtpPurpose.PIN_RESET,
+        consumedAt: null,
+      }
+    });
+
+    const code = generateNumericOtp(safeLength);
+    const codeHash = await hashCode(code);
+    const expiresAt = new Date(Date.now() + safeTtl * 1000);
+
+    const saved = await prisma.otpCode.create({
+      data: {
+        contactNo: String(contactNo),
+        purpose: OtpPurpose.PIN_RESET,
+        codeHash,
+        expiresAt,
+      }
+    });
+
+    // Send OTP via SMS using TextBee
+    const DEVICE_ID = process.env.TEXTBEE_DEVICE_ID;
+    const API_KEY = process.env.TEXTBEE_API_KEY;
+    let smsSent = false;
+    let smsError = null;
+    try {
+      const url = `https://api.textbee.dev/api/v1/gateway/devices/${DEVICE_ID}/send-sms`;
+      await axios.post(
+        url,
+        { recipients: [String(contactNo)], message: `Your PIN reset OTP code is: ${code}` },
+        { headers: { 'x-api-key': API_KEY } }
+      );
+      smsSent = true;
+    } catch (err) {
+      smsError = err instanceof Error ? err.message : 'Unknown error';
+    }
+
+    const isDev = process.env.NODE_ENV !== 'production';
+    return res.status(201).json({
+      success: true,
+      message: 'PIN reset OTP generated',
+      smsSent,
+      smsError,
+      data: {
+        id: saved.id,
+        contactNo: saved.contactNo,
+        purpose: saved.purpose,
+        expiresAt: saved.expiresAt,
+        // Return code for dev only
+        code: isDev ? code : undefined,
+      }
+    });
+  } catch (error) {
+    console.error('Error requesting PIN reset OTP:', error);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });

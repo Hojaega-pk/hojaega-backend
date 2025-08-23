@@ -85,7 +85,11 @@ app.get('/', (req: Request, res: Response) => {
       },
       otpEndpoints: {
         request: 'http://localhost:3000/api/otp/request (POST)',
-        verify: 'http://localhost:3000/api/otp/verify (POST)'
+        verify: 'http://localhost:3000/api/otp/verify (POST)',
+        pinResetRequest: 'http://localhost:3000/api/otp/pin-reset-request (POST)'
+      },
+      pinResetEndpoints: {
+        unified: 'http://localhost:3000/api/forgot-password (POST) - Works for both consumers and service providers'
       }
     }
   });
