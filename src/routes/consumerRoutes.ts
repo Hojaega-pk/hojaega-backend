@@ -1,4 +1,5 @@
 import express from 'express';
+import bcrypt from 'bcrypt';
 import { prismaService } from '../services/prisma.service';
 import { CreateConsumerDto, ConsumerResponse } from '../entities/Consumer';
 import { validateForgotPassword } from '../middleware/validation';
@@ -8,13 +9,13 @@ const router = express.Router();
 // Create consumer
 router.post('/consumer-create', async (req, res) => {
   try {
-    const { name, city, pin }: CreateConsumerDto = req.body;
+    const { name, city, contactNo, pin }: CreateConsumerDto = req.body;
 
     // Validate required fields
-    if (!name || !city || !pin) {
+    if (!name || !city || !contactNo || !pin) {
       return res.status(400).json({ 
-        error: 'Name, city and pin are required',
-        message: 'Name, city and pin fields must be provided'
+        error: 'Name, city, contact number and pin are required',
+        message: 'Name, city, contact number and pin fields must be provided'
       });
     }
 
@@ -34,6 +35,37 @@ router.post('/consumer-create', async (req, res) => {
       });
     }
 
+    // Validate contact number (not empty)
+    if (contactNo.trim().length === 0) {
+      return res.status(400).json({ 
+        error: 'Contact number cannot be empty',
+        message: 'Contact number must contain valid characters'
+      });
+    }
+
+    // Validate contact number format (6-15 digits with optional + prefix)
+    const phoneRegex = /^\+?[0-9]{6,15}$/;
+    if (!phoneRegex.test(contactNo.replace(/[\s\-\(\)]/g, ''))) {
+      return res.status(400).json({ 
+        error: 'Invalid contact number format',
+        message: 'Please enter a valid contact number (6-15 digits with optional + prefix)'
+      });
+    }
+
+    // Check if contact number already exists
+    const existingConsumer = await prismaService.getPrismaClient().consumer.findFirst({
+      where: {
+        contactNo: contactNo.trim()
+      }
+    });
+
+    if (existingConsumer) {
+      return res.status(400).json({ 
+        error: 'Contact number already exists',
+        message: 'A consumer with this contact number already exists'
+      });
+    }
+
     // Validate pin format (exactly 4 digits)
     if (!/^[0-9]{4}$/.test(pin)) {
       return res.status(400).json({ 
@@ -43,16 +75,15 @@ router.post('/consumer-create', async (req, res) => {
     }
 
     // Hash the PIN before saving
-    const bcrypt = require('bcrypt');
     const saltRounds = 10;
     const hashedPin = await bcrypt.hash(pin, saltRounds);
 
-    // Create consumer with contactNo as empty string (to be updated later)
+    // Create consumer with all provided data
     const consumer = await prismaService.getPrismaClient().consumer.create({
       data: {
         name: name.trim(),
         city: city.trim(),
-        contactNo: '',
+        contactNo: contactNo.trim(),
         pin: hashedPin
       }
     });
@@ -125,7 +156,6 @@ router.post('/consumer-signin', async (req, res) => {
     }
 
     // Compare PIN (hashed)
-    const bcrypt = require('bcrypt');
     const pinMatch = await bcrypt.compare(pinString, consumer.pin);
     if (!pinMatch) {
       return res.status(401).json({
@@ -212,7 +242,6 @@ router.post('/forgot-password', validateForgotPassword, async (req, res) => {
     }
 
     // Verify OTP code
-    const bcrypt = require('bcrypt');
     const isOtpValid = await bcrypt.compare(String(otpCode), otpRecord.codeHash);
     if (!isOtpValid) {
       // Update attempts count
@@ -290,3 +319,5 @@ router.post('/forgot-password', validateForgotPassword, async (req, res) => {
 });
 
 export default router;
+
+
