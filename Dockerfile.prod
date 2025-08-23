@@ -1,0 +1,37 @@
+# Stage 1: build
+FROM node:20-alpine AS build
+WORKDIR /app
+
+# Copy only package files first for caching
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+# Copy source code
+COPY . .
+
+# Generate Prisma client and build
+RUN npx prisma generate
+RUN npm run build
+
+# Stage 2: production runtime
+FROM node:20-alpine
+WORKDIR /app
+
+# Copy only necessary artifacts from build
+COPY --from=build /app/package*.json ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/screenshots ./screenshots
+
+# Set production environment
+ENV NODE_ENV=production
+
+# Expose backend port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+
+# Start the application after DB is ready
+CMD sh -c "npx wait-on tcp:db:5432 && npx prisma migrate deploy && node dist/index.js"

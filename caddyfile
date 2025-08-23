@@ -1,0 +1,3 @@
+hojaega.pk {
+    reverse_proxy backend:3000
+}
