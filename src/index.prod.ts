@@ -73,6 +73,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - ${req.ip}`);
   next();
 });
+app.use(express.static(path.join(__dirname, '../public')));
 
 
 app.use('/api', serviceProviderRoutes);
