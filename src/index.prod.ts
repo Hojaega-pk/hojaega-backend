@@ -2,6 +2,7 @@ import express from 'express';
 import { Request, Response, NextFunction } from 'express';
 import { serviceProviderRoutes } from './routes/serviceProviderRoutes';
 import { serviceProviderSigninRoutes } from './routes/serviceProviderSignin';
+import { otpRoutes } from './routes/otpRoutes';
 import consumerRoutes from './routes/consumerRoutes';
 import { prismaService } from './services/prisma.service';
 import { setupSwagger } from './swagger';
@@ -9,42 +10,40 @@ import path from 'path';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
+import smsRoutes from './routes/smsRoutes';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 
-// Security middleware
-app.use(helmet());
 
-// Compression middleware
+app.use(helmet());
 app.use(compression());
 
-// Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000, 
+  max: 100 
 });
 app.use('/api/', limiter);
 
-// Middleware
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Setup Swagger
+
 setupSwagger(app);
 
-// Static files for screenshots
+
 app.use('/screenshots', express.static(path.join(__dirname, '../screenshots')));
 
-// Ensure screenshots directory exists
+
 import fs from 'fs';
 const screenshotsDir = path.join(__dirname, '../screenshots');
 if (!fs.existsSync(screenshotsDir)) {
   fs.mkdirSync(screenshotsDir, { recursive: true });
 }
 
-// Enhanced CORS middleware for production
+
 app.use((req: Request, res: Response, next: NextFunction) => {
   const allowedOrigins = [
     'https://hojaega.pk',
@@ -69,18 +68,20 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// Request logging middleware
+
 app.use((req: Request, res: Response, next: NextFunction) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - ${req.ip}`);
   next();
 });
 
-// Routes
+
 app.use('/api', serviceProviderRoutes);
 app.use('/api', serviceProviderSigninRoutes);
 app.use('/api', consumerRoutes);
+app.use('/api', otpRoutes);
+app.use('/sms', smsRoutes);
 
-// Health check endpoint
+
 app.get('/health', (req: Request, res: Response) => {
   res.json({ 
     status: 'OK', 
@@ -91,11 +92,11 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
-// Root endpoint
+
 app.get('/', (req: Request, res: Response) => {
   res.json({
     message: 'Welcome to Service Provider API',
-    domain: 'Hojaega.pk (Production)',
+    domain: 'https://hojaega.pk (Production)',
     version: process.env.npm_package_version || '1.0.0',
     endpoints: {
       health: '/health',
@@ -116,16 +117,27 @@ app.get('/', (req: Request, res: Response) => {
         paymentUpload: '/api/payment-upload',
         signin: '/api/sp-signin'
       },
-             consumerEndpoints: {
-         create: '/api/consumer-create',
-         signin: '/api/consumer-signin',
-         forgotPassword: '/api/forgot-password (POST)'
-       }
+      consumerEndpoints: {
+        create: '/api/consumer-create',
+        signin: '/api/consumer-signin',
+        forgotPassword: '/api/forgot-password (POST)'
+      },
+      otpEndpoints: {
+        request: '/api/otp/request (POST)',
+        verify: '/api/otp/verify (POST)',
+        pinResetRequest: '/api/otp/pin-reset-request (POST)'
+      },
+      pinResetEndpoints: {
+        unified: '/api/forgot-password (POST) - Works for both consumers and service providers'
+      },
+      smsEndpoints: {
+        send: '/sms/send (POST)'
+      }
     }
   });
 });
 
-// 404 handler
+
 app.use('*', (req: Request, res: Response) => {
   res.status(404).json({
     success: false,
@@ -134,7 +146,7 @@ app.use('*', (req: Request, res: Response) => {
   });
 });
 
-// Global error handler
+
 app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
   console.error('Global error handler:', error);
   res.status(500).json({
@@ -144,7 +156,7 @@ app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-// Database connection and server startup
+
 async function startServer() {
   try {
     await prismaService.connect();
@@ -164,7 +176,6 @@ async function startServer() {
 
 startServer();
 
-// Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down gracefully');
   await prismaService.disconnect();
