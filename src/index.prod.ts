@@ -138,7 +138,7 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 
-app.use('*', (req: Request, res: Response) => {
+app.use(/(.*)/, (req: Request, res: Response) => {
   res.status(404).json({
     success: false,
     message: 'Endpoint not found',
