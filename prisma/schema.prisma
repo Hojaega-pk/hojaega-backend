@@ -23,8 +23,9 @@ model ServiceProvider {
   createdAt             DateTime                  @default(now())
   updatedAt             DateTime                  @updatedAt
 
-  // Relation: One service provider can have many payments
-  payments ServiceProviderPayment[]
+  // Relations
+  payments              ServiceProviderPayment[]
+  conversations         Conversation[]
 
   @@map("service_providers")
 }
@@ -51,6 +52,9 @@ model Consumer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Relations
+  conversations Conversation[]
+
   @@map("consumers")
 }
 
@@ -73,4 +77,58 @@ model OtpCode {
 
   @@index([contactNo, purpose, expiresAt])
   @@map("otp_codes")
+}
+
+// New models for messaging system
+enum MessageType {
+  OFFER
+  ACCEPT
+  DECLINE
+  CHARGE
+  PAYMENT
+  GENERAL
+  SYSTEM
+}
+
+enum ConversationStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model Conversation {
+  id                Int                 @id @default(autoincrement())
+  serviceProviderId Int
+  consumerId        Int
+  status            ConversationStatus  @default(ACTIVE)
+  lastMessageAt     DateTime            @default(now())
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  // Relations
+  serviceProvider   ServiceProvider     @relation(fields: [serviceProviderId], references: [id])
+  consumer          Consumer            @relation(fields: [consumerId], references: [id])
+  messages          Message[]
+
+  @@unique([serviceProviderId, consumerId])
+  @@map("conversations")
+}
+
+model Message {
+  id             Int         @id @default(autoincrement())
+  conversationId Int
+  senderId       Int
+  senderType     String      // "service_provider" or "consumer"
+  messageType    MessageType @default(GENERAL)
+  content        String
+  metadata       Json?       // For storing additional data like offer amount, charges, etc.
+  isRead         Boolean     @default(false)
+  createdAt      DateTime    @default(now())
+
+  // Relations
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+
+  @@index([conversationId, createdAt])
+  @@index([senderId, senderType])
+  @@map("messages")
 }

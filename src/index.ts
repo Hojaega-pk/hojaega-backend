@@ -1,16 +1,28 @@
 import express from 'express';
 import { Request, Response, NextFunction } from 'express';
+import { createServer } from 'http';
 import { serviceProviderRoutes } from './routes/serviceProviderRoutes';
 import { serviceProviderSigninRoutes } from './routes/serviceProviderSignin';
 import { otpRoutes } from './routes/otpRoutes';
 import consumerRoutes from './routes/consumerRoutes';
+import { conversationRoutes, initializeConversationServices } from './routes/conversationRoutes';
 import { prismaService } from './services/prisma.service';
+import { SocketService } from './services/socket.service';
+import { MessagingService } from './services/messaging.service';
 import { setupSwagger } from './swagger';
 import path from 'path';
 
 const app = express();
+const server = createServer(app);
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
+
+// Initialize socket and messaging services
+const socketService = new SocketService(server);
+const messagingService = new MessagingService(socketService);
+
+// Initialize conversation routes with services
+initializeConversationServices(messagingService, socketService);
 
 setupSwagger(app);
 app.use(express.json());
@@ -21,6 +33,7 @@ app.use('/api', serviceProviderRoutes);
 app.use('/api', serviceProviderSigninRoutes);
 app.use('/api', consumerRoutes);
 app.use('/api', otpRoutes);
+app.use('/api', conversationRoutes);
 app.use('/sms', smsRoutes);
 
 // CORS middleware for localhost (will be updated to Hojaega.pk when deployed)
@@ -90,6 +103,16 @@ app.get('/', (req: Request, res: Response) => {
       },
       pinResetEndpoints: {
         unified: 'http://localhost:3000/api/forgot-password (POST) - Works for both consumers and service providers'
+      },
+      conversationEndpoints: {
+        // Conversation Management
+        createConversation: 'http://localhost:3000/api/conversation (POST) - Create new conversation',
+        updateStatus: 'http://localhost:3000/api/conversation/{id}/status (PUT)',
+        
+        // Message Management
+        sendMessage: 'http://localhost:3000/api/message (POST) - Simple API: only requires id and content',
+        getMessagesSimple: 'http://localhost:3000/api/messages?id={conversationId} (GET) - Fetch all messages by conversation id',
+        markAsRead: 'http://localhost:3000/api/conversation/{id}/read (PUT)',
       }
     }
   });
@@ -100,9 +123,10 @@ async function startServer() {
   try {
     await prismaService.connect();
     
-    app.listen(Number(PORT), String(HOST), () => {
+    server.listen(Number(PORT), String(HOST), () => {
       console.log('Service Provider API is running!');
       console.log(`Server: http://${HOST}:${PORT}`);
+      console.log(`Socket.IO server is running on the same port`);
       // ...existing logs...
     });
   } catch (error: any) {

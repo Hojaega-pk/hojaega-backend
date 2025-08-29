@@ -1,6 +1,154 @@
 # Service Provider & Consumer API Documentation
 ## Testing the API
 
+## Messaging & Conversations
+
+### Create Conversation
+- Method: POST
+- URL: `/api/conversation`
+- Purpose: Create a new conversation between a service provider and a consumer.
+
+Request Body:
+```json
+{
+  "serviceProviderId": 2,
+  "consumerId": 5
+}
+```
+
+Success Response (201):
+```json
+{
+  "success": true,
+  "conversation": {
+    "id": 123,
+    "serviceProviderId": 2,
+    "consumerId": 5,
+    "status": "ACTIVE",
+    "createdAt": "2025-08-28T10:00:00.000Z"
+  }
+}
+```
+
+---
+
+### Send Message (Simple)
+- Method: POST
+- URL: `/api/message`
+- Purpose: Send a message to an existing conversation using only conversation id and content.
+
+Request Body:
+```json
+{
+  "id": 123,
+  "content": "Hello, how can I help you?"
+}
+```
+
+Notes:
+- `id` is the conversation id.
+- Other fields (senderId, senderType, messageType, metadata) are determined server-side.
+
+Success Response (201):
+```json
+{
+  "success": true,
+  "message": {
+    "id": 456,
+    "conversationId": 123,
+    "senderId": 5,
+    "senderType": "consumer",
+    "messageType": "GENERAL",
+    "content": "Hello, how can I help you?",
+    "metadata": {},
+    "createdAt": "2025-08-28T10:05:00.000Z"
+  }
+}
+```
+
+---
+
+### Get Messages by Conversation Id (Simple)
+- Method: GET
+- URL: `/api/messages?id={conversationId}`
+- Purpose: Fetch all messages for a given conversation id (ascending by time).
+
+Example:
+```
+GET /api/messages?id=123
+```
+
+Success Response (200):
+```json
+{
+  "success": true,
+  "messages": [
+    {
+      "id": 1,
+      "conversationId": 123,
+      "senderId": 5,
+      "senderType": "consumer",
+      "messageType": "GENERAL",
+      "content": "Hi",
+      "createdAt": "2025-08-28T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+Error Responses:
+- 400: `{ "error": "id (conversation ID) query param is required" }`
+- 404: `{ "error": "Conversation not found" }`
+
+---
+
+### Update Conversation Status
+- Method: PUT
+- URL: `/api/conversation/{id}/status`
+- Purpose: Change a conversation's lifecycle status.
+
+Request Body:
+```json
+{ "status": "ACTIVE" }
+```
+
+Allowed Values: `ACTIVE`, `COMPLETED`, `CANCELLED`
+
+Success Response (200):
+```json
+{
+  "success": true,
+  "conversation": {
+    "id": 123,
+    "status": "COMPLETED"
+  }
+}
+```
+
+---
+
+### Mark Messages as Read
+- Method: PUT
+- URL: `/api/conversation/{id}/read`
+- Purpose: Mark all unread messages in a conversation as read for the requesting user.
+
+Request Body:
+```json
+{
+  "userId": 5,
+  "userType": "consumer"
+}
+```
+
+Success Response (200):
+```json
+{
+  "success": true,
+  "message": "Marked 3 messages as read",
+  "count": 3
+}
+```
+
 Download Postman desktop since local host requests only work on desktop make sure to run the project in background otherwise postman won't give any response.
 
 ## Overview
